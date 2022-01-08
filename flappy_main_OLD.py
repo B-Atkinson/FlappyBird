@@ -22,7 +22,6 @@ import os
 import sys
 import random
 import numpy as np
-from IPython import embed
 from ple.games.flappybird import FlappyBird
 from ple import PLE
 from pygame.constants import K_w

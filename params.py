@@ -13,14 +13,13 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #  
 # Created by marko.orescanin@nps.edu on 7/21/20
+#
+# Modified by Brian Atkinson on 1/5/21
+# This module contains all parameter handling for the project, including
+# all command line tunable parameter definitions, any preprocessing
+# of those parameters, or generation/specification of other parameters.
 
-"""params.py
 
-This module contains all parameter handling for the project, including
-all command line tunable parameter definitions, any preprocessing
-of those parameters, or generation/specification of other parameters.
-
-"""
 import argparse
 import os
 # import datetime
@@ -29,52 +28,55 @@ import yaml
 
 def make_argparser():
     parser = argparse.ArgumentParser(description='Arguments to run training for FlappyBird reinforcement learning with human influence.')
-    parser.add_argument('--model_dir', type=str, required=True)
-    parser.add_argument('--test_dir', type=str)
-    parser.add_argument('--train_dir', type=str)
-    parser.add_argument('--val_dir', type=str)
-    parser.add_argument('--model_type', type=str, default='fully_connected',
-                        help="the type of model to use. allowed inputs are fully_connected and cnn")
-    parser.add_argument('--regression', type=str2bool, default=False,
-                        help="is it a regression model")
-    parser.add_argument('--input_shape', type=int, default=(28, 28),
-                        help="the type of model to use. allowed inputs are fully_connected and cnn")
+    
+    #render the screen
+    parser.add_argument('--render', type=str2bool, default=False
+                        help='if True, the game will be displayed')
+    #network arguments
+    parser.add_argument('--hidden', type=int, default=200,
+                        help="the number of hidden nodes to use in the network")
+    
+    #hyperparameters
+    parser.add_argument('--gamma', type=float, default=.99)
+    parser.add_argument('--dropout', type=float, default=0,
+                        help="percentage of hidden layer neurons to be dropped from the network each episode")
+    parser.add_argument("--learning_rate", type=float, default=1e-4,
+                        help="specify the base learning rate for the model")
+    parser.add_argument('--seed', type=int, default=42,
+                        help="specify a number to seed the PRNGs with")
+    
+    #training arguments
+    parser.add_argument('--human', type=str2bool, default=True,
+                        help="determines if human influence is to be used in training the agent")
+    parser.add_argument('--human_influence', type=float, default=.5,
+                        help="determines if human influence is to be used in training the agent")
+    parser.add_argument('--num_episodes', type=int, default=100000,
+                        help="the number of episodes to train the agent on")
+    
+    #load from checkpoint
     parser.add_argument('--continue_training', type=str2bool, default=False,
                         help="continue training from a checkpoint")
     parser.add_argument('--checkpoint_path', type=str,
-                        help="path to the checkpoint to continue training")
-    parser.add_argument('--predict', type=str2bool, default=False,
-                        help="predict from a checkpoint, use checkpoint flag to pass a model")
-    parser.add_argument('--num_classes', type=int, default=2,
-                        help="the type of model to use. allowed inputs are fully_connected and cnn")
-
-    parser.add_argument('--num_epochs', type=int, default=2,
-                        help="the type of model to use. allowed inputs are fully_connected and cnn")
-    parser.add_argument('--batch_size', type=int, default=6,
-                        help="the type of model to use. allowed inputs are fully_connected and cnn")
-
-    parser.add_argument("--optimizer", type=str, default="adam",
-                        help="specify the optimizer for the model")
-    parser.add_argument("--callback_list", type=str, default=None,
-                        help="the callbacks to be added")
-    parser.add_argument("--activation_fn", type=str, default="relu",
-                        help="specify the hidden layer activation function for the model")
-    parser.add_argument("--base_learning_rate", type=int, default=0.001,
-                        help="specify the base learning rate for the specified optimizer for the model")
-    parser.add_argument("--loss_type", type=str, default="categorical_crossentropy",
-                        help=" loss type: Options [categorical_crossentropy | binary_crossentropy]")
-    parser.add_argument("--eval_metrics", type=str, default=None,
-                        help="a list of the metrics of interest, seperated by commas")
+                        help="path to the checkpoint to continue training from")
+    
+    #filepath arguments
+    parser.add_argument('--weight_dir', type=str,
+                        help='a filepath to an existing directory to save to')
+    parser.add_argument('--graph_dir', type=str,
+                        help='a filepath to an existing directory to save graphs/plots to')
+    
     # multi-gpu training arguments
     parser.add_argument('--mgpu_run', type=str2bool, default=False,
                         help="multi gpu run")
     parser.add_argument("--n_gpus", type=int, default=1,
                         help="number of gpu's on the machine, juno is 2")
+    
     # multi-processing arguments
     parser.add_argument('--use_multiprocessing', type=str2bool, default=True,
                         help="specifys weather to use use_multiprocessing in .fit_genrator method ")
     parser.add_argument("--workers", type=int, default=6,
                         help="number of CPU's, for my machine 6 workers, for Juno 18")
+    
     return parser.parse_args()
 
 
@@ -95,7 +97,6 @@ def get_hparams():
     """any preprocessing, special handling of the hparams object"""
 
     parser = make_argparser()
-    print(parser)
 
     return parser
 

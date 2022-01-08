@@ -12,7 +12,7 @@ class BirdPlayer(pygame.sprite.Sprite):
 
     def __init__(self,
                  SCREEN_WIDTH, SCREEN_HEIGHT, init_pos,
-                 image_assets, rng=np.random.default_rng(24), color="red", scale=1.0):
+                 image_assets, rng=24, color="red", scale=1.0):
 
         self.SCREEN_WIDTH = SCREEN_WIDTH
         self.SCREEN_HEIGHT = SCREEN_HEIGHT
@@ -34,8 +34,12 @@ class BirdPlayer(pygame.sprite.Sprite):
         self.FLAP_POWER = 9 * self.scale
         self.MAX_DROP_SPEED = 10.0
         self.GRAVITY = 1.0 * self.scale
-
-        self.rng = rng
+        
+        if isinstance(rng,np.random.RandomState):
+            self.rng = rng
+        else:
+            self.rng = np.random.RandomState(rng)
+            
 
         #TODO - adjust function call
         self._oscillateStartPos()  # makes the direction and position random
@@ -204,8 +208,8 @@ class FlappyBird(base.PyGameWrapper):
         # TODO -verify this seed implementation
         base.PyGameWrapper.__init__(self, width, height, actions=actions)
         if type(rngSeed) == int:
-            self.rng = np.random.default_rng(rngSeed)
-        elif type(rngSeed) == Generator:
+            self.rng = np.random.RandomState(rngSeed)
+        elif type(rngSeed) == np.random.RandomState:
             self.rng = rngSeed
         else:
             raise Exception('Flappybird RNG setting failed with rngSeed: {0}'.format(rngSeed))
@@ -379,7 +383,7 @@ class FlappyBird(base.PyGameWrapper):
 
     def _generatePipes(self, offset=0, pipe=None):
         #TODO - add seed to start_gap?
-        start_gap = self.rng.integers(
+        start_gap = self.rng.random_integers(
             low=self.pipe_min,
             high=self.pipe_max
         )

@@ -1,7 +1,6 @@
 import numpy as np
 from PIL import Image  # pillow
 import sys
-
 import pygame
 from .games.base.pygamewrapper import PyGameWrapper
 
