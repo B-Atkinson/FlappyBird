@@ -30,7 +30,7 @@ def make_argparser():
     parser = argparse.ArgumentParser(description='Arguments to run training for FlappyBird reinforcement learning with human influence.')
     
     #render the screen
-    parser.add_argument('--render', type=str2bool, default=False
+    parser.add_argument('--render', type=str2bool, default=False,
                         help='if True, the game will be displayed')
     #network arguments
     parser.add_argument('--hidden', type=int, default=200,
@@ -44,14 +44,22 @@ def make_argparser():
                         help="specify the base learning rate for the model")
     parser.add_argument('--seed', type=int, default=42,
                         help="specify a number to seed the PRNGs with")
+    parser.add_argument("--decay_rate", type=float, default=.99,
+                        help="rate of decay for RMSprop")
+    parser.add_argument('--batch_size', type=int, default=10,
+                        help="number of episodes to conduct rmsprop parameter updates over")
     
     #training arguments
     parser.add_argument('--human', type=str2bool, default=True,
                         help="determines if human influence is to be used in training the agent")
     parser.add_argument('--human_influence', type=float, default=.5,
                         help="determines if human influence is to be used in training the agent")
+    parser.add_argument('--human_decay', type=float, default=0,
+                        help="rate of exponential decay for human influence per episode")
     parser.add_argument('--num_episodes', type=int, default=100000,
                         help="the number of episodes to train the agent on")
+    parser.add_argument('--save_every', type=int, default=100,
+                        help="specifies the number of episodes to wait until saving network parameters")
     
     #load from checkpoint
     parser.add_argument('--continue_training', type=str2bool, default=False,

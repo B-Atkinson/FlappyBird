@@ -1,10 +1,26 @@
+from pygame.transform import threshold
+
+
+# Author: Brian Atkinson
+
+# Created: 1/9/2022
+
+# Description: This code uses FlappyBird as an environment to train RL agents. Agents can learn purely on their own or utilize human reinforcement.
+# The environment is provided in the customized pygames learning environment package inside the  parent  directory  of  this  program.  Agents  are
+# initialized with a neural network of a single hidden layer and an output layer of one neuron. If human influence is used it slightly modifies the
+# probability of the agent moving up prior to sampling from a uniform distribution. Various input parameters and their default values can be  found
+# in params.py.
+
+# Attributions: Much of this code was inspired or taken from Brandon Hee's research (as my job was to reproduce a behavior) as well as a blog  post 
+# from Andrej Karpathy (https://gist.github.com/karpathy/a4166c7fe253700972fcbc77e4ea32c5).
+
 import os
 import sys
 import random
 import pickle
 import yaml
 import numpy as np
-#import cupy as cp
+# import cupy as cp
 from ple.games.flappybird import FlappyBird
 from ple import PLE
 from pygame.constants import K_w
@@ -25,7 +41,7 @@ ACTION_MAP = {
 }
 
 hparams = params.get_hparams()
-
+rng = np.random.default_rng(hparams.seed)
 
 #### Function Definitions Begin------------------------------------------------------
 
@@ -51,7 +67,7 @@ def discount_rewards(r, gamma):
     return discounted_r
 
 # Karpathy with added normalization and dropout options, from Hee's code
-def policy_forward(screen_input, model, hparams):
+def policy_forward(hparams, screen_input, model):
     """Uses screen_input to find the intermediate hidden state values along
     with the probability of taking action 2 (int_h and p respectively)"""
     int_h = np.dot(model['W1'], screen_input)
@@ -85,8 +101,13 @@ def policy_backward(int_harray, grad_array, epx):
     return {'W1': delta_w1, 'W2': delta_w2}
 
 # Determine which action to take
-def getAction(hparams, observation, model):
-    ...
+def getAction(hparams, game, observation, model, episode):
+    '''Processes the input frame to determine what action to take. '''
+    humanMove = humanAction(game)
+    agentMove, hidden_state = policy_forward(hparams, observation, model)
+    influence = (hparams.human_influence * (hparams.human_decay ** episode)) if hparams.human_decay else hparams.human_influence
+    prob_up = augmentProb(humanMove, agentMove, influence)
+    return prob_up, hidden_state
 
 # Get the human recommended action choice
 def humanAction(game):
@@ -110,8 +131,12 @@ def humanAction(game):
     
 
 # Get final probability of moving up
-def augmentProb():
-    ...
+def augmentProb(human, agent, influence):
+    if human == ACTION_MAP['flap']:
+        p_up = agent + influence * agent
+    else:
+        p_up = agent - influence * agent
+    return p_up
 
 
 #### Environment Setup Begin------------------------------------------------------
@@ -129,52 +154,99 @@ model['W1'] = np.random.randn(hparams.hidden,GRID_SIZE) / np.sqrt(GRID_SIZE)
 #using a fully-connected method
 model['W2'] = np.random.randn(hparams.hidden) / np.sqrt(hparams.hidden)
 
-
 #Initialize FB environment
 #if rendering the game, cannot force the FPS to go faster. 
+if not hparams.render:
+    #Hamming does not have rendering capability, need a fake output to allow program to run
+    #see https://www.py4u.net/discuss/17983
+    os.environ['SDL_VIDEODRIVER'] = 'dummy'
+    
 FLAPPYBIRD = FlappyBird(width=WIDTH, height=HEIGHT, pipe_gap=GAP, rngSeed=hparams.seed)
 game = PLE(FLAPPYBIRD, display_screen=hparams.render, force_fps=not hparams.render, rng=hparams.seed)
 game.init()
-game.reset_game()
+
 
 
 #### Training Begin------------------------------------------------------------
 
 episode = 1
-prev_frame = None       #will use to compute the hybrid frame
 running_reward = None
-reward_sum = 0          #store cumulative reward for the episode
 
 #prepare to track episode
 #frames- an array that stores each hybrid input frame given to the network
 #actions- an array of the actions taken after sampling
 #rewards- array of the reward for each step, not cumulative
 #activations- an array of hidden layer activation function outputs
-frames, actions, rewards, activations = [], [], [], []
-
-
+episode_histories = []
+training_summaries = []
+grad_buffer = {k: np.zeros_like(v) for k, v in model.items()}
+rmsprop_cache = {k: np.zeros_like(v) for k, v in model.items()}
 
 #Do training loop
 while episode <= hparams.num_episodes:
+    game.reset_game()
     agent_score = 0
+    prev_frame = None       #will use to compute the hybrid frame
+    frames, actions, rewards, activations, actionTape = [], [], [], [], []
     
     #Do an episode
     while not game.game_over():
+        
         observation = game.getScreenGrayscale()
+        
         #preprocess?
         
         # action = call function to decide an action
-        action = getAction(hparams, observation, model)
+        prob_up, hidden_state = getAction(hparams, game, observation, model, episode)
+        action = ACTION_MAP['flap'] if rng.uniform() > prob_up else ACTION_MAP['noop']
         reward = game.act(action)
+        agent_score += reward
+        
+        #record data for this step
+        frames.append(observation)
+        actions.append(1 if ACTION_MAP[action]==K_w else 0) #flaps stored as 1, no-flap stored as 0
+        activations.append(hidden_state)
+        rewards.append(reward)
+        
+        #this tape is used to encourage the action in the future if we see a similar input
+        #see http://karpathy.github.io/2016/05/31/rl/#:~:text=looking%20quite%20bleak.-,Supervised%20Learning,-.%20Before%20we%20dive
+        actionTape.append(1-prob_up)
     
-    game.reset_game()
-    episode += 1
     
-    #Save score
-
+    #episode over, compile all frames' data to prep for backprop   
+    episode_histories.append(actions)        
+    epx = np.vstack(frames)             #array of arrays, each subarray is the set of frames for an episode  
+    eph = np.vstack(activations)        #array of arrays, each subarray is the set of hidden layer activations for an episode  
+    epr = np.vstack(rewards)            #array of arrays, each subarray is the set of rewards at each step for an episode  
+    epdlogp = np.vstack(actionTape)     #action encouragement gradient tape of log probability        
+    training_summaries.append( (episode, agent_score) )  #save summary info for this episode to plot later
+    
+    
+    #Save data after episode
+    if episode % hparams.save_every == 0:
+        ...
+    
     #Do backprop    
+    discounted_epr = discount_rewards(epr, hparams.gamma)
+    discounted_epr -= np.mean(discounted_epr)
+    discounted_epr /= np.std(discounted_epr)
+    epdlogp *= discounted_epr  # modulate the gradient with advantage 
+    gradient = policy_backward(eph, epdlogp, epx)
     
+    for k in model:
+        grad_buffer[k] += gradient[k]  # accumulate grad over batch
+
+    # perform rmsprop parameter update every batch_size episodes. Default 10.
+    if episode % hparams.batch_size == 0:
+            
+        w1_before = model['W1']
+        for k, v in model.items():
+            g = grad_buffer[k]  # gradient
+            rmsprop_cache[k] = hparams.decay_rate * rmsprop_cache[k] + (1 - hparams.decay_rate) * g ** 2
+            model[k] += hparams.learning_rate * g / (np.sqrt(rmsprop_cache[k]) + 1e-5)
+            grad_buffer[k] = np.zeros_like(v)  # reset batch gradient buffer
+            
     #Record network activations every X episodes
     
 
-
+    episode += 1
