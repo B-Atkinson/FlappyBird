@@ -1,6 +1,3 @@
-from pygame.transform import threshold
-
-
 # Author: Brian Atkinson
 
 # Created: 1/9/2022
@@ -16,7 +13,6 @@ from pygame.transform import threshold
 
 import os
 import sys
-import random
 import pickle
 import yaml
 import numpy as np
