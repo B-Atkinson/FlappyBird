@@ -48,6 +48,8 @@ def make_argparser():
                         help="rate of decay for RMSprop")
     parser.add_argument('--batch_size', type=int, default=10,
                         help="number of episodes to conduct rmsprop parameter updates over")
+    parser.add_argument('--normalize', type=str2bool, default=False,
+                        help='if True, the network values get normalized each time they are recalculated')
     
     #training arguments
     parser.add_argument('--human', type=str2bool, default=True,

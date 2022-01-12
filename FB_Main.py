@@ -188,7 +188,8 @@ while episode <= hparams.num_episodes:
     #Do an episode
     while not game.game_over():
         
-        observation = game.getScreenGrayscale()
+        observation = game.getScreenGrayscale().astype(np.float).ravel()
+        
         
         #preprocess?
         
@@ -200,7 +201,7 @@ while episode <= hparams.num_episodes:
         
         #record data for this step
         frames.append(observation)
-        actions.append(1 if ACTION_MAP[action]==K_w else 0) #flaps stored as 1, no-flap stored as 0
+        actions.append(1 if action==K_w else 0) #flaps stored as 1, no-flap stored as 0
         activations.append(hidden_state)
         rewards.append(reward)
         
