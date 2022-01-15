@@ -30,8 +30,10 @@ def make_argparser():
     parser = argparse.ArgumentParser(description='Arguments to run training for FlappyBird reinforcement learning with human influence.')
     
     #render the screen
+    #parser.add_argument('--render', type=str2bool, default=True,
+                        #help='use this to test in Wing IDE')
     parser.add_argument('--render', type=str2bool, default=False,
-                        help='if True, the game will be displayed')
+                        help='if True, the game will be displayed')    
     #network arguments
     parser.add_argument('--hidden', type=int, default=200,
                         help="the number of hidden nodes to use in the network")
@@ -60,8 +62,12 @@ def make_argparser():
                         help="rate of exponential decay for human influence per episode")
     parser.add_argument('--num_episodes', type=int, default=100000,
                         help="the number of episodes to train the agent on")
-    parser.add_argument('--save_every', type=int, default=100,
+    parser.add_argument('--save_stats', type=int, default=100,
                         help="specifies the number of episodes to wait until saving network parameters")
+    parser.add_argument('--hidden_save_rate', type=int, default=200,
+                        help='saves the hidden layer activations every X episodes')
+    parser.add_argument('--save_every', type=int, default=200,
+                        help='saves the hidden layer activations every X episodes')    
     
     #load from checkpoint
     parser.add_argument('--continue_training', type=str2bool, default=False,

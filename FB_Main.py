@@ -14,7 +14,9 @@
 import os
 import sys
 import pickle
+import json
 import yaml
+import csv
 import numpy as np
 # import cupy as cp
 from ple.games.flappybird import FlappyBird
@@ -38,6 +40,23 @@ ACTION_MAP = {
 
 hparams = params.get_hparams()
 rng = np.random.default_rng(hparams.seed)
+
+#### Folders, files, metadata start------------------------------------------------------
+PATH = "ht-" if hparams.human else "no_ht"
+PATH = PATH + "-" + str(hparams.num_episodes) + "-S" + str(hparams.seed) + "-H" + str(hparams.hidden)
+MODEL_NAME =  PATH + "/pickles/"
+ACTIVATIONS = PATH + "/activations/"
+STATS = "/stats.csv"
+MOVES = "/moves.csv"
+
+os.makedirs(os.path.dirname(PATH+'/metadata.txt'), exist_ok=True)
+os.makedirs(os.path.dirname(MODEL_NAME), exist_ok=True)
+os.makedirs(os.path.dirname(ACTIVATIONS), exist_ok=True)
+print('Saving to: ' + PATH)
+
+with open(PATH+'/metadata.txt', 'w') as f:
+    json.dump(hparams.__dict__, f, indent=2)
+#### Folders, files, metadata end------------------------------------------------------
 
 #### Function Definitions Begin------------------------------------------------------
 
@@ -99,11 +118,14 @@ def policy_backward(int_harray, grad_array, epx):
 # Determine which action to take
 def getAction(hparams, game, observation, model, episode):
     '''Processes the input frame to determine what action to take. '''
-    humanMove = humanAction(game)
-    agentMove, hidden_state = policy_forward(hparams, observation, model)
-    influence = (hparams.human_influence * (hparams.human_decay ** episode)) if hparams.human_decay else hparams.human_influence
-    prob_up = augmentProb(humanMove, agentMove, influence)
-    return prob_up, hidden_state
+    agentMove, hidden_activations = policy_forward(hparams, observation, model)
+    if hparams.human:        
+        humanMove = humanAction(game)
+        influence = (hparams.human_influence * (hparams.human_decay ** episode)) if hparams.human_decay else hparams.human_influence
+        prob_up = augmentProb(humanMove, agentMove, influence)
+    else:
+        prob_up = agentMove
+    return prob_up, hidden_activations
 
 # Get the human recommended action choice
 def humanAction(game):
@@ -133,6 +155,12 @@ def augmentProb(human, agent, influence):
     else:
         p_up = agent - influence * agent
     return p_up
+
+def save_csv(data, filename):
+    with open(filename, 'a', newline='') as csvFile:
+        writer = csv.writer(csvFile)
+        writer.writerows(data)
+    csvFile.close()
 
 
 #### Environment Setup Begin------------------------------------------------------
@@ -173,36 +201,49 @@ running_reward = None
 #actions- an array of the actions taken after sampling
 #rewards- array of the reward for each step, not cumulative
 #activations- an array of hidden layer activation function outputs
-episode_histories = []
+episode_actions = []
 training_summaries = []
+saved_hiddens = []
 grad_buffer = {k: np.zeros_like(v) for k, v in model.items()}
 rmsprop_cache = {k: np.zeros_like(v) for k, v in model.items()}
 
 #Do training loop
 while episode <= hparams.num_episodes:
     game.reset_game()
+    if episode % 10 == 0:
+        game.display_screen = True
+        game.force_fps = False
+    else:
+        game.display_screen = False
+        game.force_fps = True
     agent_score = 0
     prev_frame = None       #will use to compute the hybrid frame
     frames, actions, rewards, activations, actionTape = [], [], [], [], []
     
+    print('episode: {}'.format(episode))
+    
     #Do an episode
     while not game.game_over():
         
-        observation = game.getScreenGrayscale().astype(np.float).ravel()
+        observation = game.getScreenGrayscale()
+        observation = observation.astype(np.float).ravel()
         
         
-        #preprocess?
+        #preprocess to eliminate background values?
         
         # action = call function to decide an action
-        prob_up, hidden_state = getAction(hparams, game, observation, model, episode)
+        prob_up, hidden_activations = getAction(hparams, game, observation, model, episode)
         action = ACTION_MAP['flap'] if rng.uniform() > prob_up else ACTION_MAP['noop']
         reward = game.act(action)
         agent_score += reward
         
+        if episode % hparams.hidden_save_rate == 0:
+            saved_hiddens.append(hidden_activations)
+        
         #record data for this step
         frames.append(observation)
         actions.append(1 if action==K_w else 0) #flaps stored as 1, no-flap stored as 0
-        activations.append(hidden_state)
+        activations.append(hidden_activations)
         rewards.append(reward)
         
         #this tape is used to encourage the action in the future if we see a similar input
@@ -211,7 +252,7 @@ while episode <= hparams.num_episodes:
     
     
     #episode over, compile all frames' data to prep for backprop   
-    episode_histories.append(actions)        
+    episode_actions.append(actions)        
     epx = np.vstack(frames)             #array of arrays, each subarray is the set of frames for an episode  
     eph = np.vstack(activations)        #array of arrays, each subarray is the set of hidden layer activations for an episode  
     epr = np.vstack(rewards)            #array of arrays, each subarray is the set of rewards at each step for an episode  
@@ -220,8 +261,9 @@ while episode <= hparams.num_episodes:
     
     
     #Save data after episode
-    if episode % hparams.save_every == 0:
-        ...
+    if episode % hparams.hidden_save_rate == 0:
+                pickle.dump(saved_hiddens, open(ACTIVATIONS  + str(episode) + '.p', 'wb'))
+                saved_hiddens = []
     
     #Do backprop    
     discounted_epr = discount_rewards(epr, hparams.gamma)
@@ -243,7 +285,17 @@ while episode <= hparams.num_episodes:
             model[k] += hparams.learning_rate * g / (np.sqrt(rmsprop_cache[k]) + 1e-5)
             grad_buffer[k] = np.zeros_like(v)  # reset batch gradient buffer
             
-    #Record network activations every X episodes
-    
+    #Record network the actions and score per episode every X episodes
+    if episode % hparams.save_stats == 0:
+                pickle.dump(model, open(MODEL_NAME  + str(episode) + '.p', 'wb'))
+                # save_csv(training_summaries, STATS); training_summaries = []
+                with open(STATS, 'a', newline='') as file:
+                    writer = csv.writer(file)
+                    writer.writerows(training_summaries)
+                    
+                # save_csv(episode_actions, MOVES); episode_actions = []
+                with open(MOVES, 'a', newline='') as file:
+                    writer = csv.writer(file)
+                    writer.writerows(episode_actions)
 
     episode += 1
