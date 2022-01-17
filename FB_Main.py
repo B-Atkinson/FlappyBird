@@ -10,7 +10,7 @@
 
 # Attributions: Much of this code was inspired or taken from Brandon Hee's research (as my job was to reproduce a behavior) as well as a blog  post 
 # from Andrej Karpathy (https://gist.github.com/karpathy/a4166c7fe253700972fcbc77e4ea32c5).
-
+print('starting FB',flush=True)
 import os
 import sys
 import pickle
@@ -25,7 +25,7 @@ from pygame.constants import K_w
 import params
 
 # # Set the GPU to use
-# cp.cuda.Device(args.gpu).use()
+# cp.cuda.Device(hparams.gpu).use()
 
 #specified in ple/__init__.py lines 187-194
 WIDTH = 288
@@ -89,7 +89,7 @@ def policy_forward(hparams, screen_input, model):
     
     if hparams.normalize:
         mean = np.mean(int_h)
-        variance =np.mean((int_h - mean) ** 2)
+        variance = np.mean((int_h - mean) ** 2)
         int_h = (int_h - mean) * 1.0 / np.sqrt(variance + 1e-5)
     
     # ReLU nonlinearity used to get hidden layer state
@@ -207,6 +207,8 @@ saved_hiddens = []
 grad_buffer = {k: np.zeros_like(v) for k, v in model.items()}
 rmsprop_cache = {k: np.zeros_like(v) for k, v in model.items()}
 
+print('starting training',flush=True)
+
 #Do training loop
 while episode <= hparams.num_episodes:
     game.reset_game()
@@ -285,17 +287,17 @@ while episode <= hparams.num_episodes:
             model[k] += hparams.learning_rate * g / (np.sqrt(rmsprop_cache[k]) + 1e-5)
             grad_buffer[k] = np.zeros_like(v)  # reset batch gradient buffer
             
-    #Record network the actions and score per episode every X episodes
-    if episode % hparams.save_stats == 0:
-                pickle.dump(model, open(MODEL_NAME  + str(episode) + '.p', 'wb'))
-                # save_csv(training_summaries, STATS); training_summaries = []
-                with open(STATS, 'a', newline='') as file:
-                    writer = csv.writer(file)
-                    writer.writerows(training_summaries)
+    # #Record network the actions and score per episode every X episodes
+    # if episode % hparams.save_stats == 0:
+    #             pickle.dump(model, open(MODEL_NAME  + str(episode) + '.p', 'wb'))
+    #             # save_csv(training_summaries, STATS); training_summaries = []
+    #             with open(STATS, 'a', newline='') as file:
+    #                 writer = csv.writer(file)
+    #                 writer.writerows(training_summaries)
                     
-                # save_csv(episode_actions, MOVES); episode_actions = []
-                with open(MOVES, 'a', newline='') as file:
-                    writer = csv.writer(file)
-                    writer.writerows(episode_actions)
-
+    #             # save_csv(episode_actions, MOVES); episode_actions = []
+    #             with open(MOVES, 'a', newline='') as file:
+    #                 writer = csv.writer(file)
+    #                 writer.writerows(episode_actions)
+    print('episode {0} score: {1}'.format(episode, agent_score),flush=True)
     episode += 1
