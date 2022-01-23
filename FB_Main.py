@@ -24,8 +24,6 @@ from ple import PLE
 from pygame.constants import K_w
 import params
 
-# Set the GPU to use
-# cp.cuda.Device(hparams.gpu).use()
 
 #specified in ple/__init__.py lines 187-194
 WIDTH = 288
@@ -39,7 +37,7 @@ ACTION_MAP = {
 }
 
 hparams = params.get_hparams()
-rng = cp.random.default_rng(hparams.seed)
+rng = np.random.default_rng(hparams.seed)
 
 #### Folders, files, metadata start------------------------------------------------------
 PATH = "ht-" if hparams.human else "no_ht"
@@ -129,8 +127,6 @@ def humanAction(game):
     
     #keep in mind the y axis is flipped, y origin is the ceiling and +y points down, -y goes up
     position = state['player_y']
-    velocity = state['player_vel']
-    topNextGap = state['next_pipe_top_y']
     bottomNextGap = state['next_pipe_bottom_y']
     
     if position < bottomNextGap:
