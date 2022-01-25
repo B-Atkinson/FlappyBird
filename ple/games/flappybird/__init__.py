@@ -35,10 +35,12 @@ class BirdPlayer(pygame.sprite.Sprite):
         self.MAX_DROP_SPEED = 10.0
         self.GRAVITY = 1.0 * self.scale
         
-        if isinstance(rng,np.random.RandomState):
+        if isinstance(rng,np.random.Generator):
             self.rng = rng
+        elif not isinstance(rng,int):
+            self.rng = np.random.default_rng(24)
         else:
-            self.rng = np.random.RandomState(rng)
+            self.rng = np.random.default_rng(rng)
             
 
         #TODO - adjust function call
@@ -207,9 +209,9 @@ class FlappyBird(base.PyGameWrapper):
 
         # TODO -verify this seed implementation
         base.PyGameWrapper.__init__(self, width, height, actions=actions)
-        if type(rngSeed) == int:
-            self.rng = np.random.RandomState(rngSeed)
-        elif type(rngSeed) == np.random.RandomState:
+        if isinstance(rngSeed,int):
+            self.rng = np.random.default_rng(rngSeed)
+        elif isinstance(rngSeed,np.random.Generator):
             self.rng = rngSeed
         else:
             raise Exception('Flappybird RNG setting failed with rngSeed: {0}'.format(rngSeed))
@@ -383,7 +385,10 @@ class FlappyBird(base.PyGameWrapper):
 
     def _generatePipes(self, offset=0, pipe=None):
         #TODO - add seed to start_gap?
-        start_gap = self.rng.random_integers(
+        if self.pipe_min > self.pipe_max:
+            self.pipe_min, self.pipe_max = self.pipe_max, self.pipe_min
+            
+        start_gap = self.rng.integers(
             low=self.pipe_min,
             high=self.pipe_max
         )

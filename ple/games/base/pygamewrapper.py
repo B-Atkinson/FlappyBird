@@ -1,3 +1,4 @@
+from matplotlib.pyplot import isinteractive
 import pygame
 import numpy as np
 from pygame.constants import KEYDOWN, KEYUP, K_F15
