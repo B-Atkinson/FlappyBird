@@ -219,28 +219,29 @@ print('starting training',flush=True)
 #Do training loop
 while episode <= hparams.num_episodes:
     game.reset_game()
-    game.display_screen = True
-    #if episode % 10 == 0:
-        #game.display_screen = True
-        #game.force_fps = False
-    #else:
-        #game.display_screen = False
-        #game.force_fps = True
+    
     agent_score = 0
     prev_frame = None       #will use to compute the hybrid frame
     frames, actions, rewards, activations, actionTape = [], [], [], [], []
     
     print('episode: {}'.format(episode))
+    lastFrame = np.zeros([GRID_SIZE])
     
     #Do an episode
     while not game.game_over():
-        
-        observation = game.getScreenRGB()
-        
+                
         #convert frame to numpy ndarray
-        #observation = pygame.surfarray.array3d(observation)
-        observation = processScreen(observation)
+        currentFrame = game.getScreenRGB()
+        currentFrame = processScreen(currentFrame)
         
+        #pass in the hybrid frame to the network
+        if np.any(lastFrame):
+            observation = currentFrame - lastFrame
+            np.copyto(lastFrame, currentFrame)
+        else:
+            observation = currentFrame
+            np.copyto(lastFrame, currentFrame)
+            
         # observation = game.getScreenGrayscale()
         # observation = observation.astype(np.float).ravel()
         
