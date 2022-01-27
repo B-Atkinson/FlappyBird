@@ -128,10 +128,7 @@ class Pipe(pygame.sprite.Sprite):
         self.image.fill((0, 0, 0))
         self.gap_start = gap_start
         self.x = self.SCREEN_WIDTH + self.width + offset
-        
-        with open('output_1.txt','a') as file:
-            string = 'pipe x: '+str(self.x)+'\n'
-            file.write(string)
+
 
         self.lower_pipe = self.image_assets[color]["lower"]
         self.upper_pipe = self.image_assets[color]["upper"]
@@ -252,7 +249,7 @@ class FlappyBird(base.PyGameWrapper):
     def _load_images(self):
         # preload and convert all the images so its faster when we reset
         self.images["player"] = {}
-        for c in ["red", "blue", "yellow"]:
+        for c in ["red","blue","yellow"]:
             image_assets = [
                 os.path.join(self._asset_dir, "%sbird-upflap.png" % c),
                 os.path.join(self._asset_dir, "%sbird-midflap.png" % c),
@@ -263,13 +260,13 @@ class FlappyBird(base.PyGameWrapper):
                 im).convert_alpha() for im in image_assets]
 
         self.images["background"] = {}
-        for b in ["day", "night"]:
+        for b in ["day","night"]:
             path = os.path.join(self._asset_dir, "background-%s.png" % b)
 
             self.images["background"][b] = pygame.image.load(path).convert()
 
         self.images["pipes"] = {}
-        for c in ["red", "green"]:
+        for c in ["green","red"]:
             path = os.path.join(self._asset_dir, "pipe-%s.png" % c)
 
             self.images["pipes"][c] = {}
@@ -309,14 +306,17 @@ class FlappyBird(base.PyGameWrapper):
                 self._generatePipes(offset=-75 + self.width * 1.5)
             ])
 
-        color = self.rng.choice(["day", "night"])
+        #color = self.rng.choice(["day", "night"])
+        color = "day"
         self.backdrop.background_image = self.images["background"][color]
 
         # instead of recreating
-        color = self.rng.choice(["red", "blue", "yellow"])
+        #color = self.rng.choice(["red", "blue", "yellow"])
+        color = "red"
         self.player.init(self.init_pos, color)
 
-        self.pipe_color = self.rng.choice(["red", "green"])
+        #self.pipe_color = self.rng.choice(["red", "green"])
+        self.pipe_color = "green"
         for i, p in enumerate(self.pipe_group):
             self._generatePipes(offset=self.pipe_offsets[i], pipe=p)
 

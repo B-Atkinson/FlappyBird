@@ -162,7 +162,6 @@ def processScreen(obs):
     obs = obs[::2,::2,0]
     obs = obs[::2,::2]
     row,col =np.shape(obs)
-    print('(',row,col,')')
     for i in range(row):
         for j in range(col):
             if obs[i,j]==33:
