@@ -18,7 +18,7 @@ import json
 import yaml
 import csv
 import numpy as np
-#import cupy as cp
+import cupy as cp
 from ple.games.flappybird import FlappyBird
 from ple import PLE
 import pygame
@@ -67,7 +67,7 @@ def sigmoid(value):
 # Hee's discounted reward function
 def discount_rewards(r, gamma):
     """ take 1D float array of rewards and compute discounted reward. """
-    discounted_r = np.zeros_like(r)
+    discounted_r = cp.zeros_like(r)
     running_add = 0
     for t in reversed(range(0, r.size)):
         if r[t] != 0:
@@ -76,25 +76,25 @@ def discount_rewards(r, gamma):
         running_add = running_add * gamma + r[t]
         discounted_r[t] = running_add
         
-    discounted_r -= np.mean(discounted_r)
-    discounted_r /= np.std(discounted_r)
+    discounted_r -= cp.mean(discounted_r)
+    discounted_r /= cp.std(discounted_r)
     return discounted_r
 
 # Karpathy with added normalization and dropout options, from Hee's code
 def policy_forward(hparams, screen_input, model):
     """Uses screen_input to find the intermediate hidden state values along
     with the probability of taking action 2 (int_h and p respectively)"""
-    int_h = np.dot(model['W1'], screen_input)
+    int_h = cp.dot(model['W1'], screen_input)
     
     if hparams.normalize:
-        mean = np.mean(int_h)
-        variance = np.mean((int_h - mean) ** 2)
-        int_h = (int_h - mean) * 1.0 / np.sqrt(variance + 1e-5)
+        mean = cp.mean(int_h)
+        variance = cp.mean((int_h - mean) ** 2)
+        int_h = (int_h - mean) * 1.0 / cp.sqrt(variance + 1e-5)
     
     # ReLU nonlinearity used to get hidden layer state
     int_h[int_h < 0] = 0  
         
-    logp = np.dot(model['W2'], int_h)
+    logp = cp.dot(model['W2'], int_h)
     
     #probability of moving the agent up
     p = sigmoid(logp)
@@ -103,10 +103,10 @@ def policy_forward(hparams, screen_input, model):
 # Karpathy's backpropagation functions from Hee's code
 def policy_backward(int_harray, grad_array, epx):
     """ backward pass. (int_harray is an array of intermediate hidden states) """
-    delta_w2 = np.dot(int_harray.T, grad_array).ravel()
-    delta_h = np.outer(grad_array, model['W2'])
+    delta_w2 = cp.dot(int_harray.T, grad_array).ravel()
+    delta_h = cp.outer(grad_array, model['W2'])
     delta_h[int_harray <= 0] = 0  # backprop relu
-    delta_w1 = np.dot(delta_h.T, epx)
+    delta_w1 = cp.dot(delta_h.T, epx)
     return {'W1': delta_w1, 'W2': delta_w2}
 
 # Determine which action to take
@@ -179,11 +179,11 @@ model = {}
 
 #initialize the weights for the connections between the input pixels and the hidden nodes
 #using a fully-connected method
-model['W1'] = rng.standard_normal((hparams.hidden,GRID_SIZE)) / np.sqrt(GRID_SIZE)
+model['W1'] = cp.asarray(rng.standard_normal((hparams.hidden,GRID_SIZE)) / np.sqrt(GRID_SIZE))
     
 #initialize the weights for the connections between the hidden nodes and the single output node
 #using a fully-connected method
-model['W2'] = rng.standard_normal(hparams.hidden) / np.sqrt(hparams.hidden)
+model['W2'] = cp.asarray(rng.standard_normal(hparams.hidden) / np.sqrt(hparams.hidden))
 
 #Initialize FB environment
 #if rendering the game, cannot force the FPS to go faster. 
@@ -225,7 +225,7 @@ while episode <= hparams.num_episodes:
     frames, actions, rewards, activations, actionTape = [], [], [], [], []
     
     print('episode: {}'.format(episode))
-    lastFrame = np.zeros([GRID_SIZE])
+    lastFrame = cp.zeros([GRID_SIZE])
     
     #Do an episode
     while not game.game_over():
@@ -235,12 +235,12 @@ while episode <= hparams.num_episodes:
         currentFrame = processScreen(currentFrame)
         
         #pass in the hybrid frame to the network
-        if np.any(lastFrame):
+        if cp.any(lastFrame):
             observation = currentFrame - lastFrame
-            np.copyto(lastFrame, currentFrame)
+            cp.copyto(lastFrame, currentFrame)
         else:
             observation = currentFrame
-            np.copyto(lastFrame, currentFrame)
+            cp.copyto(lastFrame, currentFrame)
             
         # observation = game.getScreenGrayscale()
         # observation = observation.astype(np.float).ravel()
@@ -270,10 +270,10 @@ while episode <= hparams.num_episodes:
     
     #episode over, compile all frames' data to prep for backprop   
     episode_actions.append(actions)        
-    epx = np.vstack(frames)             #array of arrays, each subarray is the set of frames for an episode  
-    eph = np.vstack(activations)        #array of arrays, each subarray is the set of hidden layer activations for an episode  
-    epr = np.vstack(rewards)            #array of arrays, each subarray is the set of rewards at each step for an episode  
-    epdlogp = np.vstack(actionTape)     #action encouragement gradient tape of log probability        
+    epx = cp.vstack(frames)             #array of arrays, each subarray is the set of frames for an episode  
+    eph = cp.vstack(activations)        #array of arrays, each subarray is the set of hidden layer activations for an episode  
+    epr = cp.vstack(rewards)            #array of arrays, each subarray is the set of rewards at each step for an episode  
+    epdlogp = cp.vstack(actionTape)     #action encouragement gradient tape of log probability        
     training_summaries.append( (episode, agent_score) )  #save summary info for this episode to plot later
     
     
@@ -284,8 +284,8 @@ while episode <= hparams.num_episodes:
     
     #Do backprop    
     discounted_epr = discount_rewards(epr, hparams.gamma)
-    discounted_epr -= np.mean(discounted_epr)
-    discounted_epr /= np.std(discounted_epr)
+    discounted_epr -= cp.mean(discounted_epr)
+    discounted_epr /= cp.std(discounted_epr)
     epdlogp *= discounted_epr  # modulate the gradient with advantage 
     gradient = policy_backward(eph, epdlogp, epx)
     
