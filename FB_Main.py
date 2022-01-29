@@ -159,7 +159,7 @@ def processScreen(obs):
        pixels were manually overwritten with 33 in channel 0 to be easier to detect in-situ. Rows 400-512 never change 
        because they're the ground, so they are cropped before downsampling. To reduce the number of parameters of the model,
        only using the 0th channel of the original image.'''
-    obs = obs[::2,::2,0]
+    obs = obs[:400:2,::2,0]
     obs = obs[::2,::2]
     row,col =np.shape(obs)
     for i in range(row):
@@ -232,15 +232,17 @@ while episode <= hparams.num_episodes:
                 
         #convert frame to numpy ndarray
         currentFrame = game.getScreenRGB()
-        currentFrame = processScreen(currentFrame)
+        currentFrame = cp.asarray(processScreen(currentFrame))
         
         #pass in the hybrid frame to the network
         if cp.any(lastFrame):
             observation = currentFrame - lastFrame
-            cp.copyto(lastFrame, currentFrame)
+            # cp.copyto(lastFrame, currentFrame)
+            lastFrame = currentFrame
         else:
             observation = currentFrame
-            cp.copyto(lastFrame, currentFrame)
+            # cp.copyto(lastFrame, currentFrame)
+            lastFrame = currentFrame
             
         # observation = game.getScreenGrayscale()
         # observation = observation.astype(np.float).ravel()
