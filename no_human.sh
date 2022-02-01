@@ -1,12 +1,12 @@
 #!/bin/bash
-#SBATCH --job-name=birds_arent_real
+#SBATCH --job-name=no_human
 #SBATCH --nodes=1
 #SBATCH --partition=beards
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=6
 #SBATCH --mem=64G
 #SBATCH --time=96:00:00
-#SBATCH --output=no_human_output.txt
+#SBATCH --output=no_human_%j.txt
 
 . /etc/profile
 

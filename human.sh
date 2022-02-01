@@ -6,7 +6,7 @@
 #SBATCH --cpus-per-task=6
 #SBATCH --mem=64G
 #SBATCH --time=96:00:00
-#SBATCH --output=human_output.txt
+#SBATCH --output=human_%j.txt
 
 . /etc/profile
 

@@ -42,11 +42,11 @@ rng = np.random.default_rng(hparams.seed)
 
 #### Folders, files, metadata start------------------------------------------------------
 PATH = "ht-" if hparams.human else "no_ht"
-PATH = PATH + "-" + str(hparams.num_episodes) + "-S" + str(hparams.seed) + "-H" + str(hparams.hidden)
+PATH = PATH + "-" + str(hparams.num_episodes) + "-S" + str(hparams.seed) + "-H" + str(hparams.hidden) + "-pipes"
 MODEL_NAME =  PATH + "/pickles/"
 ACTIVATIONS = PATH + "/activations/"
-STATS = PATH+"/stats_2.csv"
-MOVES = PATH+"/moves_2.csv"
+STATS = PATH+"/stats.csv"
+MOVES = PATH+"/moves.csv"
 
 os.makedirs(os.path.dirname(PATH+'/metadata.txt'), exist_ok=True)
 os.makedirs(os.path.dirname(MODEL_NAME), exist_ok=True)
@@ -192,7 +192,7 @@ if not hparams.render:
     #see https://www.py4u.net/discuss/17983
     os.environ['SDL_VIDEODRIVER'] = 'dummy'
     
-FLAPPYBIRD = FlappyBird(pipe_gap=GAP, rngSeed=hparams.seed)
+FLAPPYBIRD = FlappyBird(pipe_gap=GAP, rngSeed=hparams.seed, pipeSeed=hparams.seed+10)
 game = PLE(FLAPPYBIRD, display_screen=hparams.render, force_fps=False, rng=hparams.seed)
 game.init()
 
@@ -218,7 +218,12 @@ print('starting training',flush=True)
 
 #Do training loop
 while episode <= hparams.num_episodes:
+    #reset the pygame object to begin the episode
     game.reset_game()
+
+    #reset the pipe group list to have the same set of pipes each episode
+    FLAPPYBIRD.resetPipes()   
+    FLAPPYBIRD.init()
     
     agent_score = 0
     prev_frame = None       #will use to compute the hybrid frame
@@ -243,12 +248,6 @@ while episode <= hparams.num_episodes:
             observation = currentFrame
             # cp.copyto(lastFrame, currentFrame)
             lastFrame = currentFrame
-            
-        # observation = game.getScreenGrayscale()
-        # observation = observation.astype(np.float).ravel()
-        
-        
-        #preprocess to eliminate background values?
         
         # action = call function to decide an action
         prob_up, hidden_activations = getAction(hparams, game, observation, model, episode)
