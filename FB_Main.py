@@ -214,8 +214,6 @@ saved_hiddens = []
 grad_buffer = {k: np.zeros_like(v) for k, v in model.items()}
 rmsprop_cache = {k: np.zeros_like(v) for k, v in model.items()}
 
-print('starting training',flush=True)
-
 #Do training loop
 while episode <= hparams.num_episodes:
     #reset the pygame object to begin the episode
