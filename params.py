@@ -30,10 +30,10 @@ def make_argparser():
     parser = argparse.ArgumentParser(description='Arguments to run training for FlappyBird reinforcement learning with human influence.')
     
     #render the screen
-    #parser.add_argument('--render', type=str2bool, default=True,
-                        #help='use this to test in Wing IDE')
-    parser.add_argument('--render', type=str2bool, default=False,
-                        help='if True, the game will be displayed')    
+    parser.add_argument('--render', type=str2bool, default=True,
+                        help='use this to test in Wing IDE')
+    #parser.add_argument('--render', type=str2bool, default=False,
+                        #help='if True, the game will be displayed')    
     #network arguments
     parser.add_argument('--hidden', type=int, default=200,
                         help="the number of hidden nodes to use in the network")
