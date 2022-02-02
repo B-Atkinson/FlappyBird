@@ -215,7 +215,7 @@ class FlappyBird(base.PyGameWrapper):
 
         #Create a dedicated RNG for pipe generation that can be reset from the outside
         self.pipeSeed = pipeSeed
-        self.pipeRNG = np.random.default_rng(30)
+        self.pipeRNG = np.random.default_rng(self.pipeSeed)
         
         self.scale = 30.0 / fps
 
@@ -232,7 +232,8 @@ class FlappyBird(base.PyGameWrapper):
         self._asset_dir = os.path.join(self._dir_, "assets/")
         self._load_images()
 
-        self.pipe_offsets = [0, self.width * 0.5, self.width]
+        #explictly define the lateral spacing between pipes
+        self.pipe_offsets = [0, 200, 400]  
         self.init_pos = (
             int(self.width * 0.2),
             int(self.height / 2)
@@ -379,7 +380,7 @@ class FlappyBird(base.PyGameWrapper):
 
     def resetPipes(self):
         self.pipe_group = None
-        self.pipeRNG = np.random.default_rng(30)
+        self.pipeRNG = np.random.default_rng(self.pipeSeed)
 
     def _generatePipes(self, offset=0, pipe=None):
         #TODO - add seed to start_gap?
