@@ -70,9 +70,11 @@ def discount_rewards(r, gamma):
     discounted_r = cp.zeros_like(r)
     running_add = 0
     for t in reversed(range(0, r.size)):
+        #reset running sum if encounter a negative number because the last reward is a negative number
         if r[t] < 0:
             running_add = 0
 
+        #discounted reward at this step = (discount_factor * running_sum last step) + reward for this step
         running_add = running_add * gamma + r[t]
         discounted_r[t] = running_add
         
