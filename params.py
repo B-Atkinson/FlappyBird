@@ -52,6 +52,8 @@ def make_argparser():
                         help="number of episodes to conduct rmsprop parameter updates over")
     parser.add_argument('--normalize', type=str2bool, default=False,
                         help='if True, the network values get normalized each time they are recalculated')
+    parser.add_argument('--pipe_reward', type=float, default=1.0)
+    parser.add_argument('--loss_reward', type=float, default=-10.0)
     
     #training arguments
     parser.add_argument('--human', type=str2bool, default=True,

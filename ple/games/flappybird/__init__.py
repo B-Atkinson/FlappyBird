@@ -233,7 +233,7 @@ class FlappyBird(base.PyGameWrapper):
         self._load_images()
 
         #explictly define the lateral spacing between pipes
-        self.pipe_offsets = [0, 200, 400]  
+        self.pipe_offsets = [0, self.width*.5, self.width]  
         self.init_pos = (
             int(self.width * 0.2),
             int(self.height / 2)
