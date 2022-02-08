@@ -41,8 +41,11 @@ hparams = params.get_hparams()
 rng = np.random.default_rng(hparams.seed)
 
 #### Folders, files, metadata start------------------------------------------------------
-PATH = "ht-" if hparams.human else "no_ht"
-PATH = PATH + "-" + str(hparams.num_episodes) + "-S" + str(hparams.seed) + "-H" + str(hparams.hidden) + "-pipes"
+if hparams.human:
+    PATH = "ht-" + "-" + str(hparams.num_episodes) + "-S" + str(hparams.seed) + "-H" + str(hparams.hidden) + "-loss" + str(hparams.loss_reward) \
+        +'-hum'+str(hparams.human_influence)
+else:
+    PATH = "no_ht" + "-" + str(hparams.num_episodes) + "-S" + str(hparams.seed) + "-H" + str(hparams.hidden) + "-loss" + str(hparams.loss_reward)
 MODEL_NAME =  PATH + "/pickles/"
 ACTIVATIONS = PATH + "/activations/"
 STATS = PATH+"/stats.csv"
@@ -71,7 +74,7 @@ def discount_rewards(r, gamma):
     running_add = 0
     for t in reversed(range(0, r.size)):
         #reset running sum if encounter a negative number because the last reward is a negative number
-        if r[t] < 0:
+        if r[t] != 0:
             running_add = 0
 
         #discounted reward at this step = (discount_factor * running_sum last step) + reward for this step
@@ -132,7 +135,7 @@ def humanAction(game):
     position = state['player_y']
     bottomNextGap = state['next_pipe_bottom_y']
     
-    if position < bottomNextGap:
+    if position < (bottomNextGap-4):
         #agent is in the gap  or above it, do nothing to fall into the gap
         action = ACTION_MAP['noop']
     # elif bottomNextGap <= position:
@@ -193,9 +196,10 @@ if not hparams.render:
     #Hamming does not have rendering capability, need a fake output to allow program to run
     #see https://www.py4u.net/discuss/17983
     os.environ['SDL_VIDEODRIVER'] = 'dummy'
-    
+
+rewardDict = {"positive":hparams.pipe_reward, "loss":hparams.loss_reward}    
 FLAPPYBIRD = FlappyBird(pipe_gap=GAP, rngSeed=hparams.seed, pipeSeed=hparams.seed+10)
-game = PLE(FLAPPYBIRD, display_screen=hparams.render, force_fps=False, rng=hparams.seed)
+game = PLE(FLAPPYBIRD, display_screen=hparams.render, force_fps=False, rng=hparams.seed, reward_values=rewardDict)
 game.init()
 
 
@@ -226,10 +230,10 @@ while episode <= hparams.num_episodes:
     FLAPPYBIRD.init()
     
     agent_score = 0
+    num_pipes = 0
     prev_frame = None       #will use to compute the hybrid frame
     frames, actions, rewards, activations, actionTape = [], [], [], [], []
     
-    print('episode: {}'.format(episode))
     lastFrame = cp.zeros([GRID_SIZE])
     
     #Do an episode
@@ -251,9 +255,12 @@ while episode <= hparams.num_episodes:
         
         # action = call function to decide an action
         prob_up, hidden_activations = getAction(hparams, game, observation, model, episode)
-        action = ACTION_MAP['flap'] if rng.uniform() > prob_up else ACTION_MAP['noop']
+        action = ACTION_MAP['flap'] if rng.uniform() < prob_up else ACTION_MAP['noop']
         reward = game.act(action)
         agent_score += reward
+        
+        if reward > 0:
+            num_pipes += 1
         
         if episode % hparams.hidden_save_rate == 0:
             saved_hiddens.append(hidden_activations)
@@ -275,7 +282,7 @@ while episode <= hparams.num_episodes:
     eph = cp.vstack(activations)        #array of arrays, each subarray is the set of hidden layer activations for an episode  
     epr = cp.vstack(rewards)            #array of arrays, each subarray is the set of rewards at each step for an episode  
     epdlogp = cp.vstack(actionTape)     #action encouragement gradient tape of log probability        
-    training_summaries.append( (episode, agent_score) )  #save summary info for this episode to plot later
+    training_summaries.append( (episode, num_pipes) )  #save summary info for this episode to plot later
     
     
     #Save data after episode
@@ -310,10 +317,13 @@ while episode <= hparams.num_episodes:
                 with open(STATS, 'a', newline='') as file:
                     writer = csv.writer(file)
                     writer.writerows(training_summaries)
+                training_summaries = []
                     
                 # save_csv(episode_actions, MOVES); episode_actions = []
                 with open(MOVES, 'a', newline='') as file:
                     writer = csv.writer(file)
                     writer.writerows(episode_actions)
-    print('episode {0} score: {1}'.format(episode, agent_score),flush=True)
+                episode_actions = []
+
     episode += 1
+print('training completed',flush=True)
