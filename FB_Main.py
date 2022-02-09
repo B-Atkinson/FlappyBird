@@ -42,10 +42,10 @@ rng = np.random.default_rng(hparams.seed)
 
 #### Folders, files, metadata start------------------------------------------------------
 if hparams.human:
-    PATH = "ht-" + "-" + str(hparams.num_episodes) + "-S" + str(hparams.seed) + "-H" + str(hparams.hidden) + "-loss" + str(hparams.loss_reward) \
+    PATH = "ht-" + "-" + str(hparams.num_episodes) + "-S" + str(hparams.seed) + "-loss" + str(hparams.loss_reward) \
         +'-hum'+str(hparams.human_influence)
 else:
-    PATH = "no_ht" + "-" + str(hparams.num_episodes) + "-S" + str(hparams.seed) + "-H" + str(hparams.hidden) + "-loss" + str(hparams.loss_reward)
+    PATH = "no_ht" + "-" + str(hparams.num_episodes) + "-S" + str(hparams.seed) + "-loss" + str(hparams.loss_reward)
 MODEL_NAME =  PATH + "/pickles/"
 ACTIVATIONS = PATH + "/activations/"
 STATS = PATH+"/stats.csv"
