@@ -5,7 +5,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=6
 #SBATCH --mem=64G
-#SBATCH --time=2:00:00
+#SBATCH --time=48:00:00
 #SBATCH --output=no_human_%j.txt
 
 . /etc/profile
@@ -16,14 +16,14 @@ source activate py38
 
 python FB_Main.py \
 --num_episodes=100000 \
---loss_reward=-6 \
+--loss_reward=-5 \
 --save_stats=200 \
 --render=false \
 --hidden=200 \
 --gamma=0.99 \
 --dropout=0 \
 --learning_rate=0.0001 \
---seed=42 \
+--seed=24 \
 --decay_rate=0.99 \
 --batch_size=10 \
 --normalize=false \
