@@ -27,7 +27,7 @@ import params
 
 
 #specified in ple/__init__.py lines 187-194
-WIDTH = 128     #downsample by half twice
+WIDTH = 100     #downsample by half twice
 HEIGHT = 72    #downsample by half twice
 GAP = 100
 GRID_SIZE = WIDTH * HEIGHT
@@ -38,14 +38,27 @@ ACTION_MAP = {
 }
 
 hparams = params.get_hparams()
+#restore hyperparameters from session checkpoint, with tweaked total number of episodes
+if hparams.continue_training:
+    path = hparams.checkpoint_path
+    start = hparams.train_start
+    numTotalEpisodes = hparams.num_episodes
+    cont = True
+    #load the previous hyperparameters
+    hparams = pickle.load(open(path+'/hparams.p','rb'))
+else:
+    cont = False
+    
+    
 rng = np.random.default_rng(hparams.seed)
+REWARDDICT = {"positive":hparams.pipe_reward, "loss":hparams.loss_reward}
 
 #### Folders, files, metadata start------------------------------------------------------
 if hparams.human:
-    PATH = "ht-" + "-" + str(hparams.num_episodes) + "-S" + str(hparams.seed) + "-loss" + str(hparams.loss_reward) \
+    PATH = hparams.output_dir + "/ht-" + str(hparams.num_episodes) + "-S" + str(hparams.seed) + "-loss" + str(hparams.loss_reward) \
         +'-hum'+str(hparams.human_influence)
 else:
-    PATH = "no_ht" + "-" + str(hparams.num_episodes) + "-S" + str(hparams.seed) + "-loss" + str(hparams.loss_reward)
+    PATH = hparams.output_dir + "/no_ht-" + str(hparams.num_episodes) + "-S" + str(hparams.seed) + "-loss" + str(hparams.loss_reward)
 MODEL_NAME =  PATH + "/pickles/"
 ACTIVATIONS = PATH + "/activations/"
 STATS = PATH+"/stats.csv"
@@ -56,8 +69,13 @@ os.makedirs(os.path.dirname(MODEL_NAME), exist_ok=True)
 os.makedirs(os.path.dirname(ACTIVATIONS), exist_ok=True)
 print('Saving to: ' + PATH)
 
+#save metadata for easy viewing 
 with open(PATH+'/metadata.txt', 'w') as f:
     json.dump(hparams.__dict__, f, indent=2)
+#save metadata object in case of continuing training later
+if not hparams.continue_training:
+    pickle.dump(hparams, open(PATH+'hparams.p', 'wb'))
+
 #### Folders, files, metadata end------------------------------------------------------
 
 #### Function Definitions Begin------------------------------------------------------
@@ -115,11 +133,11 @@ def policy_backward(int_harray, grad_array, epx):
     return {'W1': delta_w1, 'W2': delta_w2}
 
 # Determine which action to take
-def getAction(hparams, game, observation, model, episode):
+def getAction(hparams, FB, observation, model, episode):
     '''Processes the input frame to determine what action to take. '''
     agentMove, hidden_activations = policy_forward(hparams, observation, model)
     if hparams.human:        
-        humanMove = humanAction(game)
+        humanMove = humanAction(FB)
         influence = (hparams.human_influence * (hparams.human_decay ** episode)) if hparams.human_decay else hparams.human_influence
         prob_up = augmentProb(humanMove, agentMove, influence)
     else:
@@ -127,28 +145,101 @@ def getAction(hparams, game, observation, model, episode):
     return prob_up, hidden_activations
 
 # Get the human recommended action choice
-def humanAction(game):
-    #get dictionary of state values describing the game, see FlappyBird/__init__.py lines 313-360
-    state = game.getGameState()
+def humanAction(FB):
+    '''The purpose of this function is to take the state of the game and determine a recommended action for the agent to take.
+    The original heuristic was simply to have the agent flap if it was below the gap, and to let gravity pull it down otherwise.
+    This was flawed because the agent takes a somewhat parabolic trajectory, using what resembles projectile motion with a speed 
+    limit. The agent is limited to 10 units of downward speed, and flaps seem to only last for one step, so each time the bird
+    flaps its vertical velocity can effectively be treated as zero. This function models the trajectory of the agent from its 
+    current location out to the right edge of the closest pipe, and determines if the agent would collide with either the ground
+    or the closest pipe if it was to simply not flap until it reaches the pipe. If the trajecotry meets the ground or the lower 
+    pipe, the recommendation is to flap. Otherwise the recommendation is to do nothing. The environment calculates next y position
+    by taking the next velocity and adding it to the current y (i.e. y_next = y_current + vel_next) and the next velocity by sub-
+    tracting 1 from the current, unless the current velocity is negative (upward), in which case it seems to zero out the velocity.
     
-    #keep in mind the y axis is flipped, y origin is the ceiling and +y points down, -y goes up
-    position = state['player_y']
-    bottomNextGap = state['next_pipe_bottom_y']
+    Input:
+    FB- The FlappyBird game object found in ./ple/games/flappybird/__init__.py
     
-    if position < (bottomNextGap-4):
-        #agent is in the gap  or above it, do nothing to fall into the gap
-        action = ACTION_MAP['noop']
-    # elif bottomNextGap <= position:
+    Output:
+    -The recommended agent action, translated to be immediately usable by the PLE.step() method. 119 if flap, else None. '''
+    #determine the closest pipe in the dictionary 
+    deltaX = 10000
+    for p in FB.pipe_group:
+        dist = (p.x - p.width/2 - 20) - FB.player.pos_x
+        if (dist < deltaX) and (dist>=0):
+            pipe = p
+            deltaX = dist
+    
+    #if agent is too far from pipes, allow it to learn on its own
+    if deltaX >= 50:
+        return 'null'
+
+    #get number of time increments to project over to reach far edge of pipe
+    #the bird moves a constant 4 units closer to the pipes each step
+    if (pipe.width+deltaX) % 4 == 0:
+        steps =  (pipe.width+deltaX) // 4
     else:
-        #agent is in line with the bottom edge or below it, need to flap
-        action = ACTION_MAP['flap']
-    return action
+        steps = 1 + (pipe.width+deltaX) // 4
+    
+    #determine the lateral space to the next pipe and where the bird is vertically
+    x = FB.player.pos_x
+    y = FB.player.pos_y
+    v = FB.player.vel
+    if (v<0):
+        #bird flaps do not carry the bird up for more than one time step, change in y is already implemented
+        v = 0
+        
+    #calculate number of steps until player velocity reaches 10 downward if no flapping, because velocity limit is 10
+    dif = (10-v -1)     
+    
+    x += 4*steps
+    if dif < steps:
+        #if bird reaches downward velocity of 10 before reaching the pipe, the downward velocity becomes fixed at 10
+        # sum of first n numbers = n*(n+1) / 2. 
+        #sum of numbers from m to n, excluding m, where m<n = n(n+1)/2 - m(m+1)/2
+        y += (9*10/2) - (v*(v+1)/2) + 10*(steps-dif)
+        v=10
+    else:
+        #bird will not reach downward velocity of 10 before reaching the pipe
+        y += ((v+steps)*(v+steps+1)/2) - (v*(v+1)/2)
+        v += steps
+    
+    #check if agent contacts the ground before or at the left edge of the pipe, tell it to flap
+    if y >= 0.79 * FB.height - FB.player.height:    
+        return ACTION_MAP['flap']
+    
+    #projection of agent trajectory through range of x locations where the pipe is, checking if it collides
+    for _ in range(1, 1+pipe.width//4):
+        #check if agent is within the left/right edges of the pipe at any height
+        is_in_pipe = (pipe.x - pipe.width/2 - 20) <= x < (pipe.x + pipe.width/2)
+        
+        #check if agent is within the top/bottom edges of the bottom pipe
+        bot_pipe_check = (
+            (FB.player.pos_y +
+             FB.player.height) > pipe.gap_start +
+            FB.pipe_gap) and is_in_pipe        
+        
+        #flap if the agent hits the bottom pipe
+        if bot_pipe_check:
+            return ACTION_MAP['flap']            
+        
+        #increment positional data and the velocity for next check
+        x += 4
+        v += 1
+        if v>=10:
+            y+=10
+        else:
+            y += v     
+    #if reach this point, agent either collides with the top pipe or passes through, either way it shoud not flap    
+    return ACTION_MAP['noop']
     
 
 # Get final probability of moving up
 def augmentProb(human, agent, influence):
     if human == ACTION_MAP['flap']:
         p_up = agent + influence * agent
+    elif human == 'null':
+        p_up = agent
     else:
         p_up = agent - influence * agent
     return p_up
@@ -164,48 +255,84 @@ def processScreen(obs):
        pixels were manually overwritten with 33 in channel 0 to be easier to detect in-situ. Rows 400-512 never change 
        because they're the ground, so they are cropped before downsampling. To reduce the number of parameters of the model,
        only using the 0th channel of the original image.'''
-    obs = obs[:400:2,::2,0]
+    obs = obs[::2,:400:2,0]
     obs = obs[::2,::2]
-    row,col =np.shape(obs)
-    for i in range(row):
-        for j in range(col):
-            if obs[i,j]==33:
+    col,row =np.shape(obs)
+    for i in range(col):
+        for j in range(row):
+            #background pixels only have value on channel 0, and the value is 33
+            if (obs[i,j]==33):
                 obs[i,j] = 0
+            elif (obs[i,j]==0):
+                pass                
+            else:
+                obs[i,j] = 1
     return obs.astype(np.float).ravel()
-            
 
+def reloadEnvironment(game, FB, rng, hparams, numEpisodes, path):
+    '''Replays recorded series of moves through the environment, agent, and random number generator in order to have the 
+    randomly-derived values be in the same state that they were when the previous training session ended. The result is 
+    to have both individual training sessions have the exact same output as one unbroken session of the same total number 
+    of episodes (i.e. 2 sessions of 1,000 episodes produce the same result as a sinlge 2,000 episode session.
+    
+    Inputs:
+    game- a fresh instantiation of the PLE object
+    FB- a fresh instantiation of the FlappyBird game object
+    rng- a fresh instantiation of the numpy random number generator
+    hparams- the parameters object from the previous training session
+    numEpisodes- the number of episodes to replay moves through (should be the number in the name of the loaded pickle file)
+    
+    Outputs:
+    game- the PLE environment object as it was at the end of the loaded training session
+    FB- the FlappyBird game object as it was at the end of the loaded training session
+    rng- the numpy random number generator as it was at the end of the loaded training session
+    '''
+    with open(path+'/'+'moves.csv',newline='') as csvFile:
+        reader = csv.reader(csvFile, delimiter=',')
+        epNum = 1
+        for episode in reader:
+            game.reset_game()
+            FB.resetPipes()   
+            FB.init()            
+            for move in episode:
+                rng.uniform()
+                if move == '1':
+                    game.act(ACTION_MAP['flap'])
+                else:
+                    game.act(ACTION_MAP['noop'])
+            epNum += 1
+            if epNum == numEpisodes:
+                break            
+    return game, FB, rng
+#### End Function Definitions-----------------------------------------------------
 
 #### Environment Setup Begin------------------------------------------------------
+if cont:
+#load old weights into model
+    model = pickle.load(open(path + '/pickles/' + str(start)  + '.p', 'rb'))
 
-#Intialize the agent weights
-# model - a dictionary whose keys (W1 and W2) have values that represent the connection weights
-#         in that layer
-model = {}
-
-#initialize the weights for the connections between the input pixels and the hidden nodes
-#using a fully-connected method
-model['W1'] = cp.asarray(rng.standard_normal((hparams.hidden,GRID_SIZE)) / np.sqrt(GRID_SIZE))
-    
-#initialize the weights for the connections between the hidden nodes and the single output node
-#using a fully-connected method
-model['W2'] = cp.asarray(rng.standard_normal(hparams.hidden) / np.sqrt(hparams.hidden))
-
-#Initialize FB environment
+else:
+    #Intialize the agent weights
+    # model - a dictionary whose keys (W1 and W2) have values that represent the connection weights in that layer
+    model = {}
+    #initialize the weights for the connections between the input pixels and the hidden nodes using a fully-connected method
+    model['W1'] = cp.asarray(rng.standard_normal((hparams.hidden,GRID_SIZE)) / np.sqrt(GRID_SIZE))
+    #initialize the weights for the connections between the hidden nodes and the single output node using a fully-connected method
+    model['W2'] = cp.asarray(rng.standard_normal(hparams.hidden) / np.sqrt(hparams.hidden))
+    cont = False
 #if rendering the game, cannot force the FPS to go faster. 
 if not hparams.render:
     #Hamming does not have rendering capability, need a fake output to allow program to run
     #see https://www.py4u.net/discuss/17983
     os.environ['SDL_VIDEODRIVER'] = 'dummy'
-
-rewardDict = {"positive":hparams.pipe_reward, "loss":hparams.loss_reward}    
+#Initialize FB environment   
 FLAPPYBIRD = FlappyBird(pipe_gap=GAP, rngSeed=hparams.seed, pipeSeed=hparams.seed+10)
-game = PLE(FLAPPYBIRD, display_screen=hparams.render, force_fps=False, rng=hparams.seed, reward_values=rewardDict)
+game = PLE(FLAPPYBIRD, display_screen=hparams.render, force_fps=False, rng=hparams.seed, reward_values=REWARDDICT)
 game.init()
+#### End Environment Setup -------------------------------------------------------
 
 
-
-#### Training Begin------------------------------------------------------------
-
+#### Training Begin---------------------------------------------------------------
 episode = 1
 running_reward = None
 
@@ -219,6 +346,13 @@ training_summaries = []
 saved_hiddens = []
 grad_buffer = {k: np.zeros_like(v) for k, v in model.items()}
 rmsprop_cache = {k: np.zeros_like(v) for k, v in model.items()}
+
+if cont:
+    print('priming RNGs')
+    game, FLAPPYBIRD, rng = reloadEnvironment(game, FLAPPYBIRD, rng, hparams, start, path)
+    episode = start+1
+    hparams.num_episodes = numTotalEpisodes
+    print('done priming\n\n')
 
 #Do training loop
 while episode <= hparams.num_episodes:
@@ -254,7 +388,7 @@ while episode <= hparams.num_episodes:
             lastFrame = currentFrame
         
         # action = call function to decide an action
-        prob_up, hidden_activations = getAction(hparams, game, observation, model, episode)
+        prob_up, hidden_activations = getAction(hparams, FLAPPYBIRD, observation, model, episode)
         action = ACTION_MAP['flap'] if rng.uniform() < prob_up else ACTION_MAP['noop']
         reward = game.act(action)
         agent_score += reward
@@ -313,13 +447,11 @@ while episode <= hparams.num_episodes:
     #Record network the actions and score per episode every X episodes
     if episode % hparams.save_stats == 0:
                 pickle.dump(model, open(MODEL_NAME  + str(episode) + '.p', 'wb'))
-                # save_csv(training_summaries, STATS); training_summaries = []
                 with open(STATS, 'a', newline='') as file:
                     writer = csv.writer(file)
                     writer.writerows(training_summaries)
                 training_summaries = []
                     
-                # save_csv(episode_actions, MOVES); episode_actions = []
                 with open(MOVES, 'a', newline='') as file:
                     writer = csv.writer(file)
                     writer.writerows(episode_actions)
@@ -327,3 +459,4 @@ while episode <= hparams.num_episodes:
 
     episode += 1
 print('training completed',flush=True)
+#### End Training-----------------------------------------------------------------

@@ -44,7 +44,7 @@ def make_argparser():
                         help="percentage of hidden layer neurons to be dropped from the network each episode")
     parser.add_argument("--learning_rate", type=float, default=1e-4,
                         help="specify the base learning rate for the model")
-    parser.add_argument('--seed', type=int, default=42,
+    parser.add_argument('--seed', type=int, default=88,
                         help="specify a number to seed the PRNGs with")
     parser.add_argument("--decay_rate", type=float, default=.99,
                         help="rate of decay for RMSprop")
@@ -53,35 +53,33 @@ def make_argparser():
     parser.add_argument('--normalize', type=str2bool, default=False,
                         help='if True, the network values get normalized each time they are recalculated')
     parser.add_argument('--pipe_reward', type=float, default=1.0)
-    parser.add_argument('--loss_reward', type=float, default=-10.0)
+    parser.add_argument('--loss_reward', type=float, default=-5.0)
     
     #training arguments
     parser.add_argument('--human', type=str2bool, default=True,
                         help="determines if human influence is to be used in training the agent")
-    parser.add_argument('--human_influence', type=float, default=.5,
+    parser.add_argument('--human_influence', type=float, default=.4,
                         help="determines if human influence is to be used in training the agent")
     parser.add_argument('--human_decay', type=float, default=0,
                         help="rate of exponential decay for human influence per episode")
-    parser.add_argument('--num_episodes', type=int, default=100000,
+    parser.add_argument('--num_episodes', type=int, default=20,
                         help="the number of episodes to train the agent on")
     parser.add_argument('--save_stats', type=int, default=100,
-                        help="specifies the number of episodes to wait until saving network parameters")
+                        help="specifies the number of episodes to wait until saving network parameters, training summaries, and moves")
     parser.add_argument('--hidden_save_rate', type=int, default=200,
                         help='saves the hidden layer activations every X episodes')
-    parser.add_argument('--save_every', type=int, default=200,
-                        help='saves the hidden layer activations every X episodes')    
     
     #load from checkpoint
     parser.add_argument('--continue_training', type=str2bool, default=False,
                         help="continue training from a checkpoint")
     parser.add_argument('--checkpoint_path', type=str,
-                        help="path to the checkpoint to continue training from")
+                        help="path to the parent directory of the training session to resume")
+    parser.add_argument('--train_start', type=int, default=100,
+                        help="number of pickle file to load model weights from")
     
     #filepath arguments
-    parser.add_argument('--weight_dir', type=str,
+    parser.add_argument('--output_dir', type=str,
                         help='a filepath to an existing directory to save to')
-    parser.add_argument('--graph_dir', type=str,
-                        help='a filepath to an existing directory to save graphs/plots to')
     
     # multi-gpu training arguments
     parser.add_argument('--mgpu_run', type=str2bool, default=False,
