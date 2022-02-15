@@ -1,12 +1,12 @@
 #!/bin/bash
-#SBATCH --job-name=no_human
+#SBATCH --job-name=nh_learn_.001
 #SBATCH --nodes=1
 #SBATCH --partition=beards
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=6
 #SBATCH --mem=32G
 #SBATCH --time=96:00:00
-#SBATCH --output=pure_learning_.01_%j.txt
+#SBATCH --output=pure_learning_.001_%j.txt
 
 . /etc/profile
 
@@ -21,11 +21,11 @@ python FB_Main.py \
 --save_stats=200 \
 --render=false \
 --gamma=0.99 \
---learning_rate=0.01 \
+--learning_rate=0.001 \
 --decay_rate=0.99 \
 --batch_size=200 \
 --human=false \
 --hidden_save_rate=400 \
 --continue_training=false \
 --checkpoint_path=null \
---output_dir=/home/brian.atkinson/thesis/data/Learning_0.01
+--output_dir=/home/brian.atkinson/thesis/data/Learning_0.001
