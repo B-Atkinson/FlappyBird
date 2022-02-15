@@ -249,14 +249,14 @@ class FlappyBird(base.PyGameWrapper):
     def _load_images(self):
         # preload and convert all the images so its faster when we reset
         self.images["player"] = {}
-        for c in ["red","blue","yellow"]:
-            image_assets = [
-                os.path.join(self._asset_dir, "%sbird-upflap.png" % c),
-                os.path.join(self._asset_dir, "%sbird-midflap.png" % c),
-                os.path.join(self._asset_dir, "%sbird-downflap.png" % c),
+        
+        image_assets = [
+                os.path.join(self._asset_dir, "redbird-up-bounded.png"),
+                os.path.join(self._asset_dir, "redbird-mid-bounded.png"),
+                os.path.join(self._asset_dir, "redbird-down-bounded.png"),
             ]
 
-            self.images["player"][c] = [pygame.image.load(
+        self.images["player"]["red"] = [pygame.image.load(
                 im).convert_alpha() for im in image_assets]
 
         self.images["background"] = {}
@@ -306,16 +306,13 @@ class FlappyBird(base.PyGameWrapper):
                 self._generatePipes(offset=-75 + self.width * 1.5)
             ])
 
-        #color = self.rng.choice(["day", "night"])
         color = "day"
         self.backdrop.background_image = self.images["background"][color]
 
         # instead of recreating
-        #color = self.rng.choice(["red", "blue", "yellow"])
         color = "red"
         self.player.init(self.init_pos, color)
 
-        #self.pipe_color = self.rng.choice(["red", "green"])
         self.pipe_color = "green"
         for i, p in enumerate(self.pipe_group):
             self._generatePipes(offset=self.pipe_offsets[i], pipe=p)

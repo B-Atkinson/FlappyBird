@@ -47,8 +47,8 @@ if hparams.continue_training:
     #load the previous hyperparameters
     hparams = pickle.load(open(path+'/hparams.p','rb'))
 else:
-    cont = False
-    pickle.dump(hparams, open(PATH+'/hparams.p', 'wb'))
+    cont=False
+
     
     
 rng = np.random.default_rng(hparams.seed)
@@ -338,7 +338,9 @@ else:
     model['W1'] = cp.asarray(rng.standard_normal((hparams.hidden,GRID_SIZE)) / np.sqrt(GRID_SIZE))
     #initialize the weights for the connections between the hidden nodes and the single output node using a fully-connected method
     model['W2'] = cp.asarray(rng.standard_normal(hparams.hidden) / np.sqrt(hparams.hidden))
-    cont = False
+    #save model hyperparameters
+    pickle.dump(hparams, open(PATH+'/hparams.p', 'wb'))
+
 #if rendering the game, cannot force the FPS to go faster. 
 if not hparams.render:
     #Hamming does not have rendering capability, need a fake output to allow program to run
