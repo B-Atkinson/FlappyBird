@@ -141,7 +141,7 @@ def getAction(hparams, game, observation, model, episode):
     '''Processes the input frame to determine what action to take. '''
     agentMove, hidden_activations = policy_forward(hparams, observation, model)
     state = game.getGameState()
-    if hparams.human and (state['next_pipe_dist_to_player']<=40):        
+    if hparams.human and (state['next_pipe_dist_to_player']<=80):        
         # humanMove = humanAction(state)
         if state['player_y'] >(state['next_pipe_bottom_y']-32):
             #flap if player is in line or below the bottom edge of the gap
