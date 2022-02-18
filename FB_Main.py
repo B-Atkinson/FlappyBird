@@ -32,6 +32,7 @@ HEIGHT = 72    #downsample by half twice
 GAP = 100
 GRID_SIZE = WIDTH * HEIGHT
 
+LASTACTION = None
 ACTION_MAP = {
     'flap': K_w,
     'noop': None
@@ -130,6 +131,7 @@ def policy_forward(hparams, screen_input, model):
 # Karpathy's backpropagation functions from Hee's code
 def policy_backward(int_harray, grad_array, epx):
     """ backward pass. (int_harray is an array of intermediate hidden states) """
+    
     delta_w2 = cp.dot(int_harray.T, grad_array).ravel()
     delta_h = cp.outer(grad_array, model['W2'])
     delta_h[int_harray <= 0] = 0  # backprop relu
@@ -143,7 +145,7 @@ def getAction(hparams, game, observation, model, episode):
     state = game.getGameState()
     if hparams.human and (state['next_pipe_dist_to_player']<=80):        
         # humanMove = humanAction(state)
-        if state['player_y'] >(state['next_pipe_bottom_y']-32):
+        if state['player_y'] >=(state['next_pipe_bottom_y']-32):
             #flap if player is in line or below the bottom edge of the gap
             humanMove = ACTION_MAP['flap']
         else:
@@ -160,17 +162,95 @@ def getAction(hparams, game, observation, model, episode):
         prob_up = agentMove
     return prob_up, hidden_activations
 
-def humanAction(state):
-    y = state['player_y']
+# def humanAction(FB,pipe):
+#     '''The purpose of this function is to take the state of the game and determine a recommended action for the agent to take.
+#     The original heuristic was simply to have the agent flap if it was below the gap, and to let gravity pull it down otherwise.
+#     This was flawed because the agent takes a somewhat parabolic trajectory, using what resembles projectile motion with a speed 
+#     limit. The agent is limited to 10 units of downward speed, and flaps seem to only last for one step, so each time the bird
+#     flaps its vertical velocity can effectively be treated as zero. This function models the trajectory of the agent from its 
+#     current location out to the right edge of the closest pipe, and determines if the agent would collide with either the ground
+#     or the closest pipe if it was to simply not flap until it reaches the pipe. If the trajecotry meets the ground or the lower 
+#     pipe, the recommendation is to flap. Otherwise the recommendation is to do nothing. The environment calculates next y position
+#     by taking the next velocity and adding it to the current y (i.e. y_next = y_current + vel_next) and the next velocity by sub-
+#     tracting 1 from the current, unless the current velocity is negative (upward), in which case it seems to zero out the velocity.
     
-    bottomEdge = state['next_pipe_bottom_y']
-    if y>bottomEdge-32:
-        #flap if player is in line or below the bottom edge of the gap
-        action = ACTION_MAP['flap']
-    else:
-        #otherwise do nothing
-        action = ACTION_MAP['noop']
-    return action
+#     Input:
+#     FB- The FlappyBird game object found in ./ple/games/flappybird/__init__.py
+    
+#     Output:
+#     -The recommended agent action, translated to be immediately usable by the PLE.step() method. 119 if flap, else None. '''
+#     #determine the closest pipe in the dictionary 
+#     deltaX = (pipe.x - pipe.width/2 - 20) - FB.player.pos_x
+    
+#     #if agent is too far from pipes, allow it to learn on its own
+#     if deltaX >= 50:
+#         return 'null'
+
+#     #get number of time increments to project over to reach far edge of pipe
+#     #the bird moves a constant 4 units closer to the pipes each step
+#     if (pipe.width+deltaX) % 4 == 0:
+#         steps =  (pipe.width+deltaX) // 4
+#     else:
+#         steps = 1 + (pipe.width+deltaX) // 4
+    
+#     #determine the lateral space to the next pipe and where the bird is vertically
+#     x = FB.player.pos_x
+#     y = FB.player.pos_y
+#     v = FB.player.vel
+#     while (v<0):
+#         x += 4
+#         v += 1
+#         y += v
+#     if (y < 0) and (LASTACTION==None):
+#         #bird hits ceiling if it coasts, need to flap to zero its upward velocity
+#         return ACTION_MAP['flap']
+#     elif (x==deltaX):
+#         if y<pipe.gap_start
+
+        
+#     #calculate number of steps until player velocity reaches 10 downward if no flapping, because velocity limit is 10
+#     dif = (10-v -1)     
+    
+#     x += 4*steps
+#     if dif < steps:
+#         #if bird reaches downward velocity of 10 before reaching the pipe, the downward velocity becomes fixed at 10
+#         # sum of first n numbers = n*(n+1) / 2. 
+#         #sum of numbers from m to n, excluding m, where m<n = n(n+1)/2 - m(m+1)/2
+#         y += (9*10/2) - (v*(v+1)/2) + 10*(steps-dif)
+#         v=10
+#     else:
+#         #bird will not reach downward velocity of 10 before reaching the pipe
+#         y += ((v+steps)*(v+steps+1)/2) - (v*(v+1)/2)
+#         v += steps
+    
+#     #check if agent contacts the ground before or at the left edge of the pipe, tell it to flap
+#     if y >= 0.79 * FB.height - FB.player.height:    
+#         return ACTION_MAP['flap']
+    
+#     #projection of agent trajectory through range of x locations where the pipe is, checking if it collides
+#     for _ in range(1, 1+pipe.width//4):
+#         #check if agent is within the left/right edges of the pipe at any height
+#         is_in_pipe = (pipe.x - pipe.width/2 - 20) <= x < (pipe.x + pipe.width/2)
+        
+#         #check if agent is within the top/bottom edges of the bottom pipe
+#         bot_pipe_check = (
+#             (FB.player.pos_y +
+#              FB.player.height) > pipe.gap_start +
+#             FB.pipe_gap) and is_in_pipe        
+        
+#         #flap if the agent hits the bottom pipe
+#         if bot_pipe_check:
+#             return ACTION_MAP['flap']            
+        
+#         #increment positional data and the velocity for next check
+#         x += 4
+#         v += 1
+#         if v>=10:
+#             y+=10
+#         else:
+#             y += v     
+    # #if reach this point, agent either collides with the top pipe or passes through, either way it shoud not flap    
+    # return ACTION_MAP['noop']
     
 # Get final probability of moving up
 def augmentProb(human, agent, influence):
@@ -306,17 +386,17 @@ while episode <= hparams.num_episodes:
     num_pipes = 0
     prev_frame = None       
     frames, actions, rewards, activations, actionTape = [], [], [], [], []
-    lastFrame = cp.zeros([GRID_SIZE])
+    lastFrame = np.zeros([GRID_SIZE])
     
     #play episode until environment sets game over variable
     while not game.game_over():
                 
         #convert frame to cupy ndarray
         currentFrame = game.getScreenRGB()
-        currentFrame = cp.asarray(processScreen(currentFrame))
+        currentFrame = processScreen(currentFrame)
         
         #create hybrid frame and pass to the network
-        if cp.any(lastFrame):
+        if np.any(lastFrame):
             observation = currentFrame - lastFrame
             lastFrame = currentFrame
         else:
@@ -324,8 +404,9 @@ while episode <= hparams.num_episodes:
             lastFrame = currentFrame
         
         # prob_up, hidden_activations = getAction(hparams, FLAPPYBIRD, observation, model, episode)
-        prob_up, hidden_activations = getAction(hparams, game, observation, model, episode)
+        prob_up, hidden_activations = getAction(hparams, game, cp.asarray(observation), model, episode)
         action = ACTION_MAP['flap'] if rng.uniform() < prob_up else ACTION_MAP['noop']
+        LASTACTION = action
         reward = game.act(action)
         agent_score += reward
         
@@ -348,10 +429,10 @@ while episode <= hparams.num_episodes:
     
     #episode over, compile all frames' data to prep for backprop   
     episode_actions.append(actions)        
-    epx = cp.vstack(frames)             #array of arrays, each subarray is the set of frames for an episode  
-    eph = cp.vstack(activations)        #array of arrays, each subarray is the set of hidden layer activations for an episode  
+    epx = np.vstack(frames)             #array of arrays, each subarray is the set of frames for an episode  
+    eph = np.vstack(activations)        #array of arrays, each subarray is the set of hidden layer activations for an episode  
     epr = cp.vstack(rewards)            #array of arrays, each subarray is the set of rewards at each step for an episode  
-    epdlogp = cp.vstack(actionTape)     #action encouragement gradient tape of log probability        
+    epdlogp = np.vstack(actionTape)     #action encouragement gradient tape of log probability        
     training_summaries.append( (episode, num_pipes) )  #save summary info for this episode to plot later
     
     
@@ -395,7 +476,8 @@ while episode <= hparams.num_episodes:
                     writer = csv.writer(file)
                     writer.writerows(episode_actions)
                 episode_actions = []
-
+    if episode%100==0:
+        print('Completed Episode:',episode,flush=True)
     episode += 1
 print('training completed',flush=True)
 #### End Training-----------------------------------------------------------------
