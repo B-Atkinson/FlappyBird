@@ -1,10 +1,15 @@
 import csv
+from pathlib import Path
+from os.path import join
 import matplotlib.pyplot as plt
 
 #plot the individual agent performances over time\
 batch = 20
 dir = '/home/brian.atkinson/thesis/data/Learning_0.0001/'
-subdir = ['ht-200000-S42-loss-5.0-hum0.4-learn0.0001','ht-200000-S24-loss-5.0-hum0.4-learn0.0001']
+# targets = list(join(dir,child) for child in Path(dir).iterdir())
+# print(targets)
+subdir = ['ht-200000-S24-loss-5.0-hum0.4-learn0.0001','ht-200000-S42-loss-5.0-hum0.4-learn0.0001',
+            'no_ht-400000-S24-loss-5.0-learn0.0001', 'no_ht-400000-S42-loss-5.0-learn0.0001']
 for d in subdir:
     file = dir+d
     eps=[]
