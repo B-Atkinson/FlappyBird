@@ -295,6 +295,8 @@ if cont:
     hparams.num_episodes = numTotalEpisodes
     print('done priming\n\n',flush=True)
 
+print('commencing training',flush=True)
+
 #regular training loop
 while episode <= hparams.num_episodes:
     #reset the pygame object and pipe group list to have the same set of pipes each episode to begin the episode
@@ -397,5 +399,6 @@ while episode <= hparams.num_episodes:
                 episode_actions = []
 
     episode += 1
+
 print('training completed',flush=True)
 #### End Training-----------------------------------------------------------------
