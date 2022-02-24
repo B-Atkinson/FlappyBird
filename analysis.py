@@ -1,30 +1,28 @@
 import csv
-from pathlib import Path
-from os.path import join
+import pathlib
+import os
 import matplotlib.pyplot as plt
 
 #plot the individual agent performances over time\
 batch = 20
-dir = '/home/brian.atkinson/thesis/data/Learning_0.0001/'
-# targets = list(join(dir,child) for child in Path(dir).iterdir())
-# print(targets)
-subdir = ['ht-200000-S24-loss-5.0-hum0.4-learn0.0001','ht-200000-S42-loss-5.0-hum0.4-learn0.0001',
-            'no_ht-400000-S24-loss-5.0-learn0.0001', 'no_ht-400000-S42-loss-5.0-learn0.0001']
-for d in subdir:
-    file = dir+d
+tgt = 'Learning_0.0001'
+dataDir = pathlib.Path('../data/'+tgt)
+
+for dir in list(exp for exp in dataDir.iterdir()):
+    experiment = os.path.split(dir)[1]
     eps=[]
     raw_scores=[]
     raw_rewards = []
     trainer='No Human Heuristic'
 
-    parts = d.split('-')
+    parts = experiment.split('-')
     for part in parts:
         if part[0]=='S':
             seed=part[1:]
         if part=='ht':
             trainer='with Human Heuristic'
     
-    with open(file+'/stats.csv',newline='') as csvFile:
+    with open(os.path.join(dir,'stats.csv'),newline='') as csvFile:
         reader = csv.reader(csvFile,delimiter=',')
         for line in reader:
             ep,score=int(line[0]),int(line[1])
@@ -50,12 +48,12 @@ for d in subdir:
     plt.title('Episode Scores (Seed={}, {})'.format(seed,trainer))
     plt.xlabel('Episodes (Batch of {} games)'.format(batch))
     plt.ylabel('Number of pipes')
-    plt.savefig(file+'/num_pipes.png')
+    plt.savefig(os.path.join(dir,'num_pipes.png'))
     plt.clf()
 
     plt.scatter(range(length),running_rewards,marker='.')
     plt.title('Running Reward (Seed={}, {})'.format(seed,trainer))
     plt.xlabel('Episodes (Batch of {} games)'.format(batch))
     plt.ylabel('Running Average Score')
-    plt.savefig(file+'/running_reward.png')
+    plt.savefig(os.path.join(dir,'running_reward.png'))
 
