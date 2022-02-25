@@ -1,3 +1,4 @@
+from cProfile import run
 import csv
 import pathlib
 import os
@@ -5,7 +6,7 @@ import matplotlib.pyplot as plt
 
 #plot the individual agent performances over time\
 batch = 20
-tgt = 'Learning_0.0001'
+tgt = 'Learning_0.01'
 dataDir = pathlib.Path('../data/'+tgt)
 
 for dir in list(exp for exp in dataDir.iterdir()):
@@ -34,14 +35,21 @@ for dir in list(exp for exp in dataDir.iterdir()):
     r_sum = 0   
     running_reward = 0 
     for e in range(len(eps)):
+        
         if e % batch == 0:
             #treat batch # of games as an episode for plotting and calculating running reward
             cumulative_scores.append(r_sum)
-            running_reward = .99*running_reward+.01*r_sum
+            running_reward = .99*running_reward+.01*r_sum/batch
             running_rewards.append(running_reward)
             r_sum = 0
+            
+            if running_rewards[-1] >= 4:
+                print('file:{} test {} exceeded'.format(dir,len(running_rewards)))
+            if len(running_rewards)>=2 and running_rewards[-1]<running_rewards[-2]:
+                minimum = len(running_rewards)
         r_sum += raw_scores[e]
-
+    
+    print(minimum)
     length = len(cumulative_scores)
     plt.clf()
     plt.scatter(range(length),cumulative_scores,marker='.')
