@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 #plot the individual agent performances over time\
 batch = 20
-tgt = 'Learning_0.01'
+tgt = 'LrgGap'
 dataDir = pathlib.Path('../data/'+tgt)
 
 for dir in list(exp for exp in dataDir.iterdir()):
