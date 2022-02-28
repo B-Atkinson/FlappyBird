@@ -25,19 +25,14 @@ import pygame
 from pygame.constants import K_w
 import params
 
-
+hparams = params.get_hparams()
 #specified in ple/__init__.py lines 187-194
 WIDTH = 100     #downsample by half twice
 HEIGHT = 72    #downsample by half twice
-GAP = 100
 GRID_SIZE = WIDTH * HEIGHT
+ACTION_MAP = {'flap': K_w,'noop': None}
+GAP = 100*hparams.gap_size
 
-ACTION_MAP = {
-    'flap': K_w,
-    'noop': None
-}
-
-hparams = params.get_hparams()
 #restore hyperparameters from session checkpoint, with tweaked total number of episodes
 if hparams.continue_training:
     path = hparams.checkpoint_path

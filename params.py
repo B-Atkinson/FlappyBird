@@ -56,6 +56,8 @@ def make_argparser():
     parser.add_argument('--loss_reward', type=float, default=-5.0)
     
     #training arguments
+    parser.add_argument('--gap_size', type=float, default=1,
+                        help="percent to increase or decrease standard gap size. training gap will be 100*gap_size")
     parser.add_argument('--human', type=str2bool, default=True,
                         help="determines if human influence is to be used in training the agent")
     parser.add_argument('--human_influence', type=float, default=.4,
