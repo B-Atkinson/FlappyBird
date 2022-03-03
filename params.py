@@ -54,8 +54,16 @@ def make_argparser():
                         help='if True, the network values get normalized each time they are recalculated')
     parser.add_argument('--pipe_reward', type=float, default=1.0)
     parser.add_argument('--loss_reward', type=float, default=-5.0)
+    parser.add_argument('--flip_heuristic', type=str2bool, default=False,
+                        help='if True, the actions recommended by the human heuristic are inverted where \
+                                 y_agent>y_bottom_gap results in a NOOP recommendation')
+    parser.add_argument('--bias', type=float, default=0,
+                        help='value of bias neurons to be added to result of dot product of input with weights')
+
     
     #training arguments
+    parser.add_argument('--percent_hybrid', type=float, default=1,
+                        help="percentage of the previous frame to subtract from the current frame in the calculation of the hybrid.")
     parser.add_argument('--gap_size', type=float, default=1,
                         help="percent to increase or decrease standard gap size. training gap will be 100*gap_size")
     parser.add_argument('--human', type=str2bool, default=True,
