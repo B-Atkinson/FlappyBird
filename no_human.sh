@@ -1,16 +1,12 @@
 #!/bin/bash
-#SBATCH --job-name=NH_LrgGap
-#SBATCH --nodes=1
-#SBATCH --partition=beards
-#SBATCH --gres=gpu:1
-#SBATCH --cpus-per-task=6
+#SBATCH --job-name=nGPU_H_bias
 #SBATCH --mem=16G
-#SBATCH --time=120:00:00
-#SBATCH --output=NH_LrgGap_%j.txt
+#SBATCH --time=07-00:00:00
+#SBATCH --output=noGPU_bias_pure_%j.txt
 
 . /etc/profile
 
-module load lang/miniconda3 lib/cuda/11.5
+module load lang/miniconda3
 
 source activate py38
 
@@ -30,6 +26,6 @@ python FB_Main.py \
 --flip_heuristic=false \
 --percent_hybrid=1 \
 --continue_training=false \
---bias=.001
+--bias=.001 \
 --checkpoint_path=null \
---output_dir=/home/brian.atkinson/thesis/data/LrgGap
+--output_dir=/home/brian.atkinson/thesis/data/noGPU/bias

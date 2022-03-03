@@ -11,14 +11,13 @@
 # Attributions: Much of this code was inspired or taken from Brandon Hee's research (as my job was to reproduce a behavior) as well as a blog  post 
 # from Andrej Karpathy (https://gist.github.com/karpathy/a4166c7fe253700972fcbc77e4ea32c5).
 print('starting FB',flush=True)
+from genericpath import exists
 import os
-# import sys
 import pickle
 import json
-# import yaml
 import csv
 import numpy as np
-import cupy as cp
+#import cupy as cp
 from ple.games.flappybird import FlappyBird
 from ple import PLE
 import pygame
@@ -52,17 +51,21 @@ REWARDDICT = {"positive":hparams.pipe_reward, "loss":hparams.loss_reward}
 #### Folders, files, metadata start------------------------------------------------------
 #define filepath for saving results
 if hparams.human:
-    PATH = hparams.output_dir + "/ht-" + str(hparams.num_episodes) + "-S" + str(hparams.seed) + "-loss" + str(hparams.loss_reward) \
-        +'-hum'+str(hparams.human_influence)+'-learn'+str(hparams.learning_rate)
+    PATH = hparams.output_dir + "/ht" + "-S" + str(hparams.seed) + "-Gap" +str(hparams.gap_size)\
+        +"-Hyb"+str(hparams.percent_hybrid) +"-FlipH_"+str(hparams.flip_heuristic)
 else:
-    PATH = hparams.output_dir + "/no_ht-" + str(hparams.num_episodes) + "-S" + str(hparams.seed) + "-loss" + \
-            str(hparams.loss_reward)+'-learn'+str(hparams.learning_rate)
+    PATH = hparams.output_dir + "/no_ht" +  "-S" + str(hparams.seed) + "-Gap" +str(hparams.gap_size)\
+        +"-Hyb"+str(hparams.percent_hybrid) +"-FlipH_"+str(hparams.flip_heuristic)
 
 MODEL_NAME =  PATH + "/pickles/"
 ACTIVATIONS = PATH + "/activations/"
 STATS = PATH+"/stats.csv"
 MOVES = PATH+"/moves.csv"
 
+if exists(os.path.dirname(PATH)):
+    #create a unique name for the directory in case of overlapping paths
+    from time import time
+    PATH += str(time())[-4:]
 os.makedirs(os.path.dirname(PATH+'/metadata.txt'), exist_ok=True)
 os.makedirs(os.path.dirname(MODEL_NAME), exist_ok=True)
 os.makedirs(os.path.dirname(ACTIVATIONS), exist_ok=True)
@@ -83,11 +86,41 @@ if not hparams.continue_training:
 def sigmoid(value):
     """Activation function used at the output of the neural network."""
     return 1.0 / (1.0 + np.exp(-value)) 
+
+def policy_forward(hparams, screen_input, model):
+    """Uses screen_input to find the intermediate hidden state values along
+    with the probability of taking action 2 (int_h and p respectively)"""
+    int_h = np.dot(model['W1'], screen_input)
+    if hparams.bias:
+        int_h+=bias
+    
+    if hparams.normalize:
+        mean = np.mean(int_h)
+        variance = np.mean((int_h - mean) ** 2)
+        int_h = (int_h - mean) * 1.0 / np.sqrt(variance + 1e-5)
+    
+    # ReLU nonlinearity used to get hidden layer state
+    int_h[int_h < 0] = 0  
+        
+    logp = np.dot(model['W2'], int_h)
+    
+    #probability of moving the agent up
+    p = sigmoid(logp)
+    return p, int_h  
+
+# Karpathy's backpropagation functions from Hee's code
+def policy_backward(int_harray, grad_array, epx):
+    """ backward pass. (int_harray is an array of intermediate hidden states) """
+    delta_w2 = np.dot(int_harray.T, grad_array).ravel()
+    delta_h = np.outer(grad_array, model['W2'])
+    delta_h[int_harray <= 0] = 0  # backprop relu
+    delta_w1 = np.dot(delta_h.T, epx)
+    return {'W1': delta_w1, 'W2': delta_w2}
     
 # Hee's discounted reward function
 def discount_rewards(r, gamma):
     """ take 1D float array of rewards and compute discounted reward. """
-    discounted_r = cp.zeros_like(r)
+    discounted_r = np.zeros_like(r)
     running_add = 0
     for t in reversed(range(0, r.size)):
         #reset running sum if encounter a negative number because the last reward is a negative number
@@ -98,38 +131,9 @@ def discount_rewards(r, gamma):
         running_add = running_add * gamma + r[t]
         discounted_r[t] = running_add
         
-    discounted_r -= cp.mean(discounted_r)
-    discounted_r /= cp.std(discounted_r)
+    discounted_r -= np.mean(discounted_r)
+    discounted_r /= np.std(discounted_r)
     return discounted_r
-
-# Karpathy with added normalization and dropout options, from Hee's code
-def policy_forward(hparams, screen_input, model):
-    """Uses screen_input to find the intermediate hidden state values along
-    with the probability of taking action 2 (int_h and p respectively)"""
-    int_h = cp.dot(model['W1'], screen_input)
-    
-    if hparams.normalize:
-        mean = cp.mean(int_h)
-        variance = cp.mean((int_h - mean) ** 2)
-        int_h = (int_h - mean) * 1.0 / cp.sqrt(variance + 1e-5)
-    
-    # ReLU nonlinearity used to get hidden layer state
-    int_h[int_h < 0] = 0  
-        
-    logp = cp.dot(model['W2'], int_h)
-    
-    #probability of moving the agent up
-    p = sigmoid(logp)
-    return p, int_h  
-
-# Karpathy's backpropagation functions from Hee's code
-def policy_backward(int_harray, grad_array, epx):
-    """ backward pass. (int_harray is an array of intermediate hidden states) """
-    delta_w2 = cp.dot(int_harray.T, grad_array).ravel()
-    delta_h = cp.outer(grad_array, model['W2'])
-    delta_h[int_harray <= 0] = 0  # backprop relu
-    delta_w1 = cp.dot(delta_h.T, epx)
-    return {'W1': delta_w1, 'W2': delta_w2}
 
 # Determine which action to take
 def getAction(hparams, game, observation, model, episode):
@@ -140,10 +144,12 @@ def getAction(hparams, game, observation, model, episode):
         # humanMove = humanAction(state)
         if state['player_y'] >(state['next_pipe_bottom_y']-32):
             #flap if player is in line or below the bottom edge of the gap
-            humanMove = ACTION_MAP['flap']
+            if hparams.flip_heuristic: humanMove = ACTION_MAP['noop']
+            else: humanMove = ACTION_MAP['flap']
         else:
             #otherwise do nothing
-            humanMove = ACTION_MAP['noop']
+            if hparams.flip_heuristic: humanMove = ACTION_MAP['flap']
+            else: humanMove = ACTION_MAP['noop']
 
         influence = (hparams.human_influence * (hparams.human_decay ** episode)) if hparams.human_decay else hparams.human_influence
         # prob_up = augmentProb(humanMove, agentMove, influence)
@@ -154,18 +160,6 @@ def getAction(hparams, game, observation, model, episode):
     else:
         prob_up = agentMove
     return prob_up, hidden_activations
-
-def humanAction(state):
-    y = state['player_y']
-    
-    bottomEdge = state['next_pipe_bottom_y']
-    if y>bottomEdge-32:
-        #flap if player is in line or below the bottom edge of the gap
-        action = ACTION_MAP['flap']
-    else:
-        #otherwise do nothing
-        action = ACTION_MAP['noop']
-    return action
     
 # Get final probability of moving up
 def augmentProb(human, agent, influence):
@@ -176,12 +170,6 @@ def augmentProb(human, agent, influence):
     else:
         p_up = agent - influence * agent
     return p_up
-
-def save_csv(data, filename):
-    with open(filename, 'a', newline='') as csvFile:
-        writer = csv.writer(csvFile)
-        writer.writerows(data)
-    csvFile.close()
     
 def processScreen(obs):
     '''Takes as input a 512x288x3 numpy ndarray and downsamples it twice to get a 100x72 output array. Usless background 
@@ -239,19 +227,19 @@ def reloadEnvironment(game, FB, rng, hparams, numEpisodes, path):
     return game, FB, rng
 #### End Function Definitions-----------------------------------------------------
 
+
+
 #### Environment Setup Begin------------------------------------------------------
 if cont:
-#load old weights into model
+    #load old weights into model
     model = pickle.load(open(path + '/pickles/' + str(start)  + '.p', 'rb'))
-
 else:
     #Intialize the agent weights
     # model - a dictionary whose keys (W1 and W2) have values that represent the connection weights in that layer
     model = {}
-    #initialize the weights for the connections between the input pixels and the hidden nodes using a fully-connected method
-    model['W1'] = cp.asarray(rng.standard_normal((hparams.hidden,GRID_SIZE)) / np.sqrt(GRID_SIZE))
-    #initialize the weights for the connections between the hidden nodes and the single output node using a fully-connected method
-    model['W2'] = cp.asarray(rng.standard_normal(hparams.hidden) / np.sqrt(hparams.hidden))
+    model['W1'] = np.asarray(rng.standard_normal((hparams.hidden,GRID_SIZE)) / np.sqrt(GRID_SIZE))
+    model['W2'] = np.asarray(rng.standard_normal(hparams.hidden) / np.sqrt(hparams.hidden))
+    bias = np.asarray(np.ones(hparams.hidden)*.01)
     #save model hyperparameters
     pickle.dump(hparams, open(PATH+'/hparams.p', 'wb'))
 
@@ -260,16 +248,16 @@ if not hparams.render:
     #Hamming does not have rendering capability, need a fake output to allow program to run
     #see https://www.py4u.net/discuss/17983
     os.environ['SDL_VIDEODRIVER'] = 'dummy'
+
 #Initialize FB environment   
 FLAPPYBIRD = FlappyBird(pipe_gap=GAP, rngSeed=hparams.seed, pipeSeed=hparams.seed+10)
-game = PLE(FLAPPYBIRD, display_screen=hparams.render, force_fps=True, rng=hparams.seed, reward_values=REWARDDICT)
+game = PLE(FLAPPYBIRD, display_screen=False, force_fps=True, rng=hparams.seed, reward_values=REWARDDICT)
 game.init()
 #### End Environment Setup -------------------------------------------------------
 
 
 #### Training Begin---------------------------------------------------------------
 episode = 1
-running_reward = None
 
 #prepare to track episode
 #frames- an array that stores each hybrid input frame given to the network
@@ -303,18 +291,18 @@ while episode <= hparams.num_episodes:
     num_pipes = 0
     prev_frame = None       
     frames, actions, rewards, activations, actionTape = [], [], [], [], []
-    lastFrame = cp.zeros([GRID_SIZE])
+    lastFrame = np.zeros([GRID_SIZE])
     
     #play episode until environment sets game over variable
     while not game.game_over():
                 
         #convert frame to cupy ndarray
         currentFrame = game.getScreenRGB()
-        currentFrame = cp.asarray(processScreen(currentFrame))
+        currentFrame = np.asarray(processScreen(currentFrame))
         
         #create hybrid frame and pass to the network
-        if cp.any(lastFrame):
-            observation = currentFrame - lastFrame
+        if np.any(lastFrame):
+            observation = currentFrame - hparams.percent_hybrid*lastFrame
             lastFrame = currentFrame
         else:
             observation = currentFrame
@@ -345,22 +333,22 @@ while episode <= hparams.num_episodes:
     
     #episode over, compile all frames' data to prep for backprop   
     episode_actions.append(actions)        
-    epx = cp.vstack(frames)             #array of arrays, each subarray is the set of frames for an episode  
-    eph = cp.vstack(activations)        #array of arrays, each subarray is the set of hidden layer activations for an episode  
-    epr = cp.vstack(rewards)            #array of arrays, each subarray is the set of rewards at each step for an episode  
-    epdlogp = cp.vstack(actionTape)     #action encouragement gradient tape of log probability        
+    epx = np.vstack(frames)             #array of arrays, each subarray is the set of frames for an episode  
+    eph = np.vstack(activations)        #array of arrays, each subarray is the set of hidden layer activations for an episode  
+    epr = np.vstack(rewards)            #array of arrays, each subarray is the set of rewards at each step for an episode  
+    epdlogp = np.vstack(actionTape)     #action encouragement gradient tape of log probability        
     training_summaries.append( (episode, num_pipes) )  #save summary info for this episode to plot later
     
     
-    #Save data after episode
+    #Save hidden layer activations periodically
     if episode % hparams.hidden_save_rate == 0:
                 pickle.dump(saved_hiddens, open(ACTIVATIONS  + str(episode) + '.p', 'wb'))
                 saved_hiddens = []
     
     #Do backprop by modulating the gradient with advantage     
     discounted_epr = discount_rewards(epr, hparams.gamma)
-    discounted_epr -= cp.mean(discounted_epr)
-    discounted_epr /= cp.std(discounted_epr)
+    discounted_epr -= np.mean(discounted_epr)
+    discounted_epr /= np.std(discounted_epr)
     epdlogp *= discounted_epr  
     gradient = policy_backward(eph, epdlogp, epx)
     
@@ -368,7 +356,7 @@ while episode <= hparams.num_episodes:
     for k in model:
         grad_buffer[k] += gradient[k]  
 
-    # perform rmsprop parameter update every batch_size episodes. Default 10.
+    # perform rmsprop parameter update every batch_size episodes
     if episode % hparams.batch_size == 0:
             
         w1_before = model['W1']
@@ -382,11 +370,13 @@ while episode <= hparams.num_episodes:
     if episode % hparams.save_stats == 0:
                 #save model weights to pickle file
                 pickle.dump(model, open(MODEL_NAME  + str(episode) + '.p', 'wb'))
+                
                 #save agent scores and episodes
                 with open(STATS, 'a', newline='') as file:
                     writer = csv.writer(file)
                     writer.writerows(training_summaries)
                 training_summaries = []
+                
                 #save move histories per episode  
                 with open(MOVES, 'a', newline='') as file:
                     writer = csv.writer(file)

@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 #plot the individual agent performances over time\
 batch = 20
 tgt = 'LrgGap'
-dataDir = pathlib.Path('../data/'+tgt)
+dataDir = pathlib.Path('../data/noGPU/'+tgt)
 
 for dir in list(exp for exp in dataDir.iterdir()):
     experiment = os.path.split(dir)[1]
