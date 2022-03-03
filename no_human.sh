@@ -5,8 +5,8 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=6
 #SBATCH --mem=16G
-#SBATCH --time=120:00:00
-#SBATCH --output=NH_LrgGap_%j.txt
+#SBATCH --time=07-00:00:00
+#SBATCH --output=%j.txt
 
 . /etc/profile
 
@@ -32,4 +32,8 @@ python FB_Main.py \
 --continue_training=false \
 --bias=.001
 --checkpoint_path=null \
+<<<<<<< Updated upstream
 --output_dir=/home/brian.atkinson/thesis/data/LrgGap
+=======
+--output_dir=/home/brian.atkinson/thesis/data/LrgGap
+>>>>>>> Stashed changes

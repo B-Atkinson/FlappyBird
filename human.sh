@@ -5,8 +5,8 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=6
 #SBATCH --mem=16G
-#SBATCH --time=120:00:00
-#SBATCH --output=H_gap_%j.txt
+#SBATCH --time=07-00:00:00
+#SBATCH --output=%j.txt
 
 . /etc/profile
 
