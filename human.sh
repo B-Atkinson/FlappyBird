@@ -1,8 +1,8 @@
 #!/bin/bash
-#SBATCH --job-name=nGPU_H_bias
+#SBATCH --job-name=nGPU_He
 #SBATCH --mem=16G
 #SBATCH --time=07-00:00:00
-#SBATCH --output=noGPU_bias_%j.txt
+#SBATCH --output=noGPU_He_%j.txt
 
 . /etc/profile
 
@@ -26,7 +26,9 @@ python FB_Main.py \
 --gap_size=1.4 \
 --flip_heuristic=false \
 --percent_hybrid=1 \
---bias=.001 \
+--bias=0 \
 --continue_training=false \
+--init=He \
+--leaky=true \
 --checkpoint_path=null \
---output_dir=/home/brian.atkinson/thesis/data/noGPU/bias
+--output_dir=/home/brian.atkinson/thesis/data/noGPU/verification

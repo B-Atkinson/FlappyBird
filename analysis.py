@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 #plot the individual agent performances over time\
 batch = 20
 tgt = 'LrgGap'
-dataDir = pathlib.Path('../data/noGPU/'+tgt)
+dataDir = pathlib.Path('../data/'+tgt)
 
 for dir in list(exp for exp in dataDir.iterdir()):
     experiment = os.path.split(dir)[1]
@@ -18,8 +18,11 @@ for dir in list(exp for exp in dataDir.iterdir()):
 
     parts = experiment.split('-')
     for part in parts:
-        if part[0]=='S':
-            seed=part[1:]
+        try:
+            if part[0]=='S':
+                seed=part[1:]
+        except:
+            ...
         if part=='ht':
             trainer='with Human Heuristic'
     try:

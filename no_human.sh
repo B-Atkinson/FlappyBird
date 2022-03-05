@@ -26,6 +26,8 @@ python FB_Main.py \
 --flip_heuristic=false \
 --percent_hybrid=1 \
 --continue_training=false \
---bias=.001 \
+--init=Xavier \
+--leaky=false \
+--bias=0 \
 --checkpoint_path=null \
---output_dir=/home/brian.atkinson/thesis/data/noGPU/bias
+--output_dir=/home/brian.atkinson/thesis/data/noGPU/verification

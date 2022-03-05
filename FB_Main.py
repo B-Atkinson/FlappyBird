@@ -52,20 +52,27 @@ REWARDDICT = {"positive":hparams.pipe_reward, "loss":hparams.loss_reward}
 #define filepath for saving results
 if hparams.human:
     PATH = hparams.output_dir + "/ht" + "-S" + str(hparams.seed) + "-Gap" +str(hparams.gap_size)\
-        +"-Hyb"+str(hparams.percent_hybrid) +"-FlipH_"+str(hparams.flip_heuristic)
+        +"-Hyb"+str(hparams.percent_hybrid) +"-FlipH_"+str(hparams.flip_heuristic)+"-Leaky_"+str(hparams.leaky)+\
+            "-Init_"+str(hparams.init)+"-Bias"+str(hparams.bias)
 else:
-    PATH = hparams.output_dir + "/no_ht" +  "-S" + str(hparams.seed) + "-Gap" +str(hparams.gap_size)\
-        +"-Hyb"+str(hparams.percent_hybrid) +"-FlipH_"+str(hparams.flip_heuristic)
+    PATH = hparams.output_dir + "/no_ht" + "-S" + str(hparams.seed) + "-Gap" +str(hparams.gap_size)\
+        +"-Hyb"+str(hparams.percent_hybrid) +"-FlipH_"+str(hparams.flip_heuristic)+"-Leaky_"+str(hparams.leaky)+\
+            "-Init_"+str(hparams.init)+"-Bias"+str(hparams.bias)
+
+try:
+    os.makedirs(os.path.dirname(PATH),exist_ok=False)
+except FileExistsError:
+    #create a unique name for the directory in case of overlapping paths
+    print('directory already exists:',PATH)
+    from time import time
+    PATH += "_"+str(time())[-4:]
 
 MODEL_NAME =  PATH + "/pickles/"
 ACTIVATIONS = PATH + "/activations/"
 STATS = PATH+"/stats.csv"
 MOVES = PATH+"/moves.csv"
 
-if exists(os.path.dirname(PATH)):
-    #create a unique name for the directory in case of overlapping paths
-    from time import time
-    PATH += str(time())[-4:]
+
 os.makedirs(os.path.dirname(PATH+'/metadata.txt'), exist_ok=True)
 os.makedirs(os.path.dirname(MODEL_NAME), exist_ok=True)
 os.makedirs(os.path.dirname(ACTIVATIONS), exist_ok=True)
@@ -99,8 +106,12 @@ def policy_forward(hparams, screen_input, model):
         variance = np.mean((int_h - mean) ** 2)
         int_h = (int_h - mean) * 1.0 / np.sqrt(variance + 1e-5)
     
-    # ReLU nonlinearity used to get hidden layer state
-    int_h[int_h < 0] = 0  
+    if hparams.leaky:
+        # # Leaky ReLU 
+        int_h[int_h < 0] *= .01
+    else:
+        # ReLU nonlinearity used to get hidden layer state
+        int_h[int_h < 0] = 0      
         
     logp = np.dot(model['W2'], int_h)
     
@@ -237,9 +248,16 @@ else:
     #Intialize the agent weights
     # model - a dictionary whose keys (W1 and W2) have values that represent the connection weights in that layer
     model = {}
-    model['W1'] = np.asarray(rng.standard_normal((hparams.hidden,GRID_SIZE)) / np.sqrt(GRID_SIZE))
-    model['W2'] = np.asarray(rng.standard_normal(hparams.hidden) / np.sqrt(hparams.hidden))
-    bias = np.asarray(np.ones(hparams.hidden)*.01)
+    if hparams.init == 'Xavier':
+        #Xavier initialization
+        model['W1'] = rng.standard_normal((hparams.hidden,GRID_SIZE)) / np.sqrt(GRID_SIZE)
+        model['W2'] = rng.standard_normal(hparams.hidden) / np.sqrt(hparams.hidden)
+    if hparams.init == 'He':
+        #He initialization
+        model['W1'] = rng.normal(loc=0,size=(hparams.hidden,GRID_SIZE), scale=np.sqrt(2/GRID_SIZE))
+        model['W2'] = rng.normal(loc=0,size=hparams.hidden , scale=np.sqrt(2/hparams.hidden))
+
+    bias = np.ones(hparams.hidden)*.01
     #save model hyperparameters
     pickle.dump(hparams, open(PATH+'/hparams.p', 'wb'))
 

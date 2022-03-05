@@ -59,7 +59,10 @@ def make_argparser():
                                  y_agent>y_bottom_gap results in a NOOP recommendation')
     parser.add_argument('--bias', type=float, default=0,
                         help='value of bias neurons to be added to result of dot product of input with weights')
-
+    parser.add_argument('--init', type=str, default='Xavier',\
+                        help="weight initialization to use")
+    parser.add_argument('--leaky', type=str2bool, default=False,\
+                        help="if True, use Leaky ReLu activation, else use ReLU")
     
     #training arguments
     parser.add_argument('--percent_hybrid', type=float, default=1,
