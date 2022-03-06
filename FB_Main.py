@@ -257,7 +257,8 @@ else:
         model['W1'] = rng.normal(loc=0,size=(hparams.hidden,GRID_SIZE), scale=np.sqrt(2/GRID_SIZE))
         model['W2'] = rng.normal(loc=0,size=hparams.hidden , scale=np.sqrt(2/hparams.hidden))
 
-    bias = np.ones(hparams.hidden)*.01
+    #Create a bias vector for the hidden layer
+    bias = hparams.bias*np.ones(hparams.hidden)
     #save model hyperparameters
     pickle.dump(hparams, open(PATH+'/hparams.p', 'wb'))
 

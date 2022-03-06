@@ -6,8 +6,8 @@ import matplotlib.pyplot as plt
 
 #plot the individual agent performances over time\
 batch = 20
-tgt = 'LrgGap'
-dataDir = pathlib.Path('../data/'+tgt)
+tgt = 'verification'
+dataDir = pathlib.Path('../data/noGPU/'+tgt)
 
 for dir in list(exp for exp in dataDir.iterdir()):
     experiment = os.path.split(dir)[1]
@@ -15,7 +15,7 @@ for dir in list(exp for exp in dataDir.iterdir()):
     raw_scores=[]
     raw_rewards = []
     trainer='No Human Heuristic'
-
+    elements = [trainer]
     parts = experiment.split('-')
     for part in parts:
         try:
@@ -24,7 +24,28 @@ for dir in list(exp for exp in dataDir.iterdir()):
         except:
             ...
         if part=='ht':
-            trainer='with Human Heuristic'
+            elements[0]='Human Heuristic'
+        elif part[:3]=='Hyb':
+            elements.append('current-{}*previous frame\n'.format(part[3:]))
+        elif part[:4]=='FlipH':
+            if part.split('_')[1] == 'False':
+                elements.append('Normal Heuristic')
+            else:
+                elements.append('Flipped Heuristic')
+        elif part[:4]=='Leaky':
+            if part.split('_')[1] == 'False':
+                elements.append('Leaky ReLu')
+            else:
+                elements.append('ReLu')
+        elif part[:4]=='Init':
+            elements.append('{} Initialization'.format(part.split('_')[1]))
+        elif part[:4]=='Bias':
+            try:
+                elements.append('Bias Neuron Value={}'.format(part.split('_')[0][4:]))
+            except:
+                elements.append('Bias Neuron Value={}'.format(part[4:]))
+        
+        
     try:
         with open(os.path.join(dir,'stats.csv'),newline='') as csvFile:
             reader = csv.reader(csvFile,delimiter=',')
@@ -57,21 +78,23 @@ for dir in list(exp for exp in dataDir.iterdir()):
                 maximum = len(running_rewards)
         r_sum += raw_scores[e]
     
-    print('\ndirectory:',experiment)
-    print('max score at epoch:',maximum)
-    print('min score at epoch:',minimum)
+    with open(os.path.join(dir,'digest.txt'),'w') as f:
+        f.write('directory:{}\n'.format(experiment))
+        f.write('max score at epoch:{}\n'.format(maximum))
+        f.write('min score at epoch:{}'.format(minimum))
     length = len(cumulative_scores)
     plt.clf()
     plt.scatter(range(length),cumulative_scores,marker='.')
-    plt.title('Episode Scores (Seed={}, {})'.format(seed,trainer))
+    plt.title('Episode Scores ({})'.format(', '.join(elements)))
     plt.xlabel('Episodes (Batch of {} games)'.format(batch))
     plt.ylabel('Number of pipes')
     plt.savefig(os.path.join(dir,'num_pipes.png'))
     plt.clf()
 
     plt.scatter(range(length),running_rewards,marker='.')
-    plt.title('Running Reward (Seed={}, {})'.format(seed,trainer))
+    plt.title('Running Reward ({})'.format(', '.join(elements)))
     plt.xlabel('Episodes (Batch of {} games)'.format(batch))
     plt.ylabel('Running Average Score')
     plt.savefig(os.path.join(dir,'running_reward.png'))
+    print('done analyzing',dir)
 

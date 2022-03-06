@@ -21,7 +21,7 @@ python FB_Main.py \
 --decay_rate=0.99 \
 --batch_size=200 \
 --human=false \
---hidden_save_rate=400 \
+--hidden_save_rate=200 \
 --gap_size=1.4 \
 --flip_heuristic=false \
 --percent_hybrid=1 \

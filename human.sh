@@ -22,7 +22,7 @@ python FB_Main.py \
 --batch_size=200 \
 --human=true \
 --human_influence=0.4 \
---hidden_save_rate=400 \
+--hidden_save_rate=200 \
 --gap_size=1.4 \
 --flip_heuristic=false \
 --percent_hybrid=1 \
