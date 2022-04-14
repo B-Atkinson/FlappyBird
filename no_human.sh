@@ -1,8 +1,8 @@
 #!/bin/bash
-#SBATCH --job-name=nGPU_H_bias
+#SBATCH --job-name=baseLeakyReLu5
 #SBATCH --mem=16G
 #SBATCH --time=07-00:00:00
-#SBATCH --output=noGPU_bias_pure_%j.txt
+#SBATCH --output=base_LeakyReLu5.txt
 
 . /etc/profile
 
@@ -12,7 +12,7 @@ source activate py38
 
 python FB_Main.py \
 --num_episodes=400000 \
---seed=42 \
+--seed=5 \
 --loss_reward=-5 \
 --save_stats=200 \
 --render=false \
@@ -21,13 +21,13 @@ python FB_Main.py \
 --decay_rate=0.99 \
 --batch_size=200 \
 --human=false \
---hidden_save_rate=200 \
+--hidden_save_rate=100 \
 --gap_size=1.4 \
 --flip_heuristic=false \
 --percent_hybrid=1 \
 --continue_training=false \
 --init=Xavier \
---leaky=false \
+--leaky=true \
 --bias=0 \
 --checkpoint_path=null \
---output_dir=/home/brian.atkinson/thesis/data/noGPU/verification
+--output_dir=/home/brian.atkinson/thesis/data/noGPU/activation_func
