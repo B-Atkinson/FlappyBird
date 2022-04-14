@@ -201,8 +201,8 @@ def getAction(hparams, game, observation, model, episode):
 #         x += 4
 #         v += 1
 #         y += v
-#     if (y < 0) and (LASTACTION==None):
-#         #bird hits ceiling if it coasts, need to flap to zero its upward velocity
+#     if (y < 0) and (LASTACTION==K_w):
+#         #bird hits ceiling if it coasts, need to flap again to zero its upward velocity
 #         return ACTION_MAP['flap']
 #     elif (x==deltaX):
 #         if y<pipe.gap_start
@@ -249,8 +249,8 @@ def getAction(hparams, game, observation, model, episode):
 #             y+=10
 #         else:
 #             y += v     
-    # #if reach this point, agent either collides with the top pipe or passes through, either way it shoud not flap    
-    # return ACTION_MAP['noop']
+#     #if reach this point, agent either collides with the top pipe or passes through, either way it shoud not flap    
+#     return ACTION_MAP['noop']
     
 # Get final probability of moving up
 def augmentProb(human, agent, influence):
