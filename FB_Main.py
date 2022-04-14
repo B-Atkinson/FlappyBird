@@ -52,16 +52,27 @@ REWARDDICT = {"positive":hparams.pipe_reward, "loss":hparams.loss_reward}
 #### Folders, files, metadata start------------------------------------------------------
 #define filepath for saving results
 if hparams.human:
-    PATH = hparams.output_dir + "/ht-" + str(hparams.num_episodes) + "-S" + str(hparams.seed) + "-loss" + str(hparams.loss_reward) \
-        +'-hum'+str(hparams.human_influence)+'-learn'+str(hparams.learning_rate)
+    PATH = hparams.output_dir + "/ht" + "-S" + str(hparams.seed) + "-Gap" +str(hparams.gap_size)\
+        +"-Hyb"+str(hparams.percent_hybrid) +"-FlipH_"+str(hparams.flip_heuristic)+"-Leaky_"+str(hparams.leaky)+\
+            "-Init_"+str(hparams.init)+"-Bias"+str(hparams.bias)
 else:
-    PATH = hparams.output_dir + "/no_ht-" + str(hparams.num_episodes) + "-S" + str(hparams.seed) + "-loss" + \
-            str(hparams.loss_reward)+'-learn'+str(hparams.learning_rate)
+    PATH = hparams.output_dir + "/no_ht" + "-S" + str(hparams.seed) + "-Gap" +str(hparams.gap_size)\
+        +"-Hyb"+str(hparams.percent_hybrid) +"-FlipH_"+str(hparams.flip_heuristic)+"-Leaky_"+str(hparams.leaky)+\
+            "-Init_"+str(hparams.init)+"-Bias"+str(hparams.bias)
+
+try:
+    os.makedirs(os.path.dirname(PATH),exist_ok=False)
+except FileExistsError:
+    #create a unique name for the directory in case of overlapping paths
+    print('directory already exists:',PATH)
+    from time import time
+    PATH += "_"+str(time())[-4:]
 
 MODEL_NAME =  PATH + "/pickles/"
 ACTIVATIONS = PATH + "/activations/"
 STATS = PATH+"/stats.csv"
 MOVES = PATH+"/moves.csv"
+
 
 os.makedirs(os.path.dirname(PATH+'/metadata.txt'), exist_ok=True)
 os.makedirs(os.path.dirname(MODEL_NAME), exist_ok=True)
@@ -108,26 +119,26 @@ def policy_forward(hparams, screen_input, model):
     with the probability of taking action 2 (int_h and p respectively)"""
     int_h = cp.dot(model['W1'], screen_input)
     
-    if hparams.normalize:
-        mean = cp.mean(int_h)
-        variance = cp.mean((int_h - mean) ** 2)
-        int_h = (int_h - mean) * 1.0 / cp.sqrt(variance + 1e-5)
-    
-    # ReLU nonlinearity used to get hidden layer state
-    int_h[int_h < 0] = 0  
+    if hparams.leaky:
+        # # Leaky ReLU 
+        int_h[int_h < 0] *= .01
+    else:
+        # ReLU nonlinearity used to get hidden layer state
+        int_h[int_h < 0] = 0      
         
     logp = cp.dot(model['W2'], int_h)
     
     #probability of moving the agent up
     p = sigmoid(logp)
-    return p, int_h  
+    return p, int_h 
 
 # Karpathy's backpropagation functions from Hee's code
 def policy_backward(int_harray, grad_array, epx):
     """ backward pass. (int_harray is an array of intermediate hidden states) """
     delta_w2 = cp.dot(int_harray.T, grad_array).ravel()
     delta_h = cp.outer(grad_array, model['W2'])
-    delta_h[int_harray <= 0] = 0  # backprop relu
+    if not hparams.leaky:
+        delta_h[int_harray <= 0] = 0  # backprop for regular relu to zero out all negative values
     delta_w1 = cp.dot(delta_h.T, epx)
     return {'W1': delta_w1, 'W2': delta_w2}
 
@@ -136,8 +147,7 @@ def getAction(hparams, game, observation, model, episode):
     '''Processes the input frame to determine what action to take. '''
     agentMove, hidden_activations = policy_forward(hparams, observation, model)
     state = game.getGameState()
-    if hparams.human and (state['next_pipe_dist_to_player']<=80):        
-        # humanMove = humanAction(state)
+    if hparams.human and (state['next_pipe_dist_to_player']<=80):
         if state['player_y'] >(state['next_pipe_bottom_y']-32):
             #flap if player is in line or below the bottom edge of the gap
             humanMove = ACTION_MAP['flap']
@@ -146,7 +156,6 @@ def getAction(hparams, game, observation, model, episode):
             humanMove = ACTION_MAP['noop']
 
         influence = (hparams.human_influence * (hparams.human_decay ** episode)) if hparams.human_decay else hparams.human_influence
-        # prob_up = augmentProb(humanMove, agentMove, influence)
         if humanMove == ACTION_MAP['flap']:
             prob_up = min(1,agentMove + influence * agentMove)
         else:
@@ -155,27 +164,27 @@ def getAction(hparams, game, observation, model, episode):
         prob_up = agentMove
     return prob_up, hidden_activations
 
-def humanAction(state):
-    y = state['player_y']
+# def humanAction(state):
+#     y = state['player_y']
     
-    bottomEdge = state['next_pipe_bottom_y']
-    if y>bottomEdge-32:
-        #flap if player is in line or below the bottom edge of the gap
-        action = ACTION_MAP['flap']
-    else:
-        #otherwise do nothing
-        action = ACTION_MAP['noop']
-    return action
+#     bottomEdge = state['next_pipe_bottom_y']
+#     if y>bottomEdge-32:
+#         #flap if player is in line or below the bottom edge of the gap
+#         action = ACTION_MAP['flap']
+#     else:
+#         #otherwise do nothing
+#         action = ACTION_MAP['noop']
+#     return action
     
-# Get final probability of moving up
-def augmentProb(human, agent, influence):
-    if human == ACTION_MAP['flap']:
-        p_up = agent + influence * agent
-    elif human == 'null':
-        p_up = agent
-    else:
-        p_up = agent - influence * agent
-    return p_up
+# # Get final probability of moving up
+# def augmentProb(human, agent, influence):
+#     if human == ACTION_MAP['flap']:
+#         p_up = agent + influence * agent
+#     elif human == 'null':
+#         p_up = agent
+#     else:
+#         p_up = agent - influence * agent
+#     return p_up
 
 def save_csv(data, filename):
     with open(filename, 'a', newline='') as csvFile:
@@ -248,10 +257,14 @@ else:
     #Intialize the agent weights
     # model - a dictionary whose keys (W1 and W2) have values that represent the connection weights in that layer
     model = {}
-    #initialize the weights for the connections between the input pixels and the hidden nodes using a fully-connected method
-    model['W1'] = cp.asarray(rng.standard_normal((hparams.hidden,GRID_SIZE)) / np.sqrt(GRID_SIZE))
-    #initialize the weights for the connections between the hidden nodes and the single output node using a fully-connected method
-    model['W2'] = cp.asarray(rng.standard_normal(hparams.hidden) / np.sqrt(hparams.hidden))
+    if hparams.init == 'Xavier':
+        #Xavier initialization
+        model['W1'] = cp.asarray(rng.standard_normal((hparams.hidden,GRID_SIZE)) / np.sqrt(GRID_SIZE))
+        model['W2'] = cp.asarray(rng.standard_normal(hparams.hidden) / np.sqrt(hparams.hidden))
+    if hparams.init == 'He':
+        #He initialization
+        model['W1'] = cp.asarray(rng.normal(loc=0,size=(hparams.hidden,GRID_SIZE), scale=np.sqrt(2/GRID_SIZE)))
+        model['W2'] = cp.asarray(rng.normal(loc=0,size=hparams.hidden , scale=np.sqrt(2/hparams.hidden)))
     #save model hyperparameters
     pickle.dump(hparams, open(PATH+'/hparams.p', 'wb'))
 
@@ -269,7 +282,6 @@ game.init()
 
 #### Training Begin---------------------------------------------------------------
 episode = 1
-running_reward = None
 
 #prepare to track episode
 #frames- an array that stores each hybrid input frame given to the network
@@ -314,7 +326,7 @@ while episode <= hparams.num_episodes:
         
         #create hybrid frame and pass to the network
         if cp.any(lastFrame):
-            observation = currentFrame - lastFrame
+            observation = currentFrame - hparams.percent_hybrid*lastFrame
             lastFrame = currentFrame
         else:
             observation = currentFrame
