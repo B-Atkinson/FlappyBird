@@ -124,7 +124,8 @@ def policy_backward(int_harray, grad_array, epx):
     """ backward pass. (int_harray is an array of intermediate hidden states) """
     delta_w2 = np.dot(int_harray.T, grad_array).ravel()
     delta_h = np.outer(grad_array, model['W2'])
-    delta_h[int_harray <= 0] = 0  # backprop relu
+    if not hparams.leaky:
+        delta_h[int_harray <= 0] = 0  # backprop for regular relu to zero out all negative values
     delta_w1 = np.dot(delta_h.T, epx)
     return {'W1': delta_w1, 'W2': delta_w2}
     
