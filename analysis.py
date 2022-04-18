@@ -14,24 +14,34 @@ import os
 import argparse
 
 def make_argparser():
-    parser = argparse.ArgumentParser(description='Arguments to run analysis for FlappyBird reinforcement learning with human influence.')
-    parser.add_argument('--singleExperiment', type=str2bool, default=False,
-                        help='conduct analysis on a directory, containing directories of experiments. Ex: the children of the noGPU directory  \
-                        are experiments, whose children are the individual tests. In other words, the grandchildren of noGPU are the tests to  \
-                        be analyzed. The default is False where the target directory is the grandparent of the tests.')
-    
+    parser = argparse.ArgumentParser(description='Arguments to run analysis for FlappyBird reinforcement learning with human influence.')    
     parser.add_argument('--rootDirectory', type=str, default='/home/brian.atkinson/thesis/data',
-                        help='The root of the experiment tree containing all experimental directories to be analyzed. The default is that ')    
-    
+                        help='The root of the experiment tree containing all experimental directories to be analyzed. The default is that ')        
     return parser.parse_args()
 
 def isParent(dir):
-    path = pathlib.Path(dir)
+    path = pathlib.Path(dir) if not isinstance(dir,pathlib.PosixPath) else dir
     suffixes = ['.csv','.png','.txt','.p']
     for folder in path.iterdir():
-        if folder.suffix() in suffixes: 
-            return True
+        for subfolder in folder.iterdir():
+            suf = subfolder.suffix
+            if suf in suffixes: 
+                return True
     return False
+
+def getChildren(dir):
+    path = pathlib.Path(dir) if not isinstance(dir,pathlib.PosixPath) else dir
+    return list(child for child in path.iterdir())
+
+def DFS_tree(dirPath):
+    dir = pathlib.Path(dirPath) if not isinstance(dirPath,pathlib.PosixPath) else dirPath
+    results = []
+    for subfolder in dir.iterdir():
+        if isParent(subfolder):
+            results.extend(getChildren(subfolder))
+        else:
+            results.extend(DFS_tree(subfolder))
+    return results
 
 # you have to use str2bool
 # because of an issue with argparser and bool type
@@ -108,29 +118,14 @@ def rearrange(oldGame):
     return neurons
 
 
-def main(dataDir,params):
-    if not isParent(dataDir):
-        #recursively call the same function to multiprocess experiments in children directories of the root
-        print('recursing {}'.format(str(dataDir)),flush=True)
-        tgtList = list([test,params] for test in dataDir.iterdir())
-        pool = mp.Pool(len(tgtList))
-        try:
-            results = pool.map_async(main,tgtList)           
-        except Exception as e:
-            print(e)
-        finally:
-            pool.close()
-            pool.join()
-            print('***all subprocesses of {} are done***'.format(str(dataDir)))
-            return
-
+def main(path):
+    dataDir = pathlib.Path(path) if not isinstance(path,pathlib.PosixPath) else path
+    
     #if reach here, dataDir is the parent directory of the tests
     batch = 20
-    print('process:',os.getpid())
-    tests = [dataDir]
+    tests = [dataDir]    
 
-    for dir in tests:
-        
+    for dir in tests:    
         experiment = os.path.split(dir)[1]
         print('opening:',dir)
         eps=[]
@@ -144,7 +139,6 @@ def main(dataDir,params):
             if part=='ht':
                 elements[0]='Human Heuristic'
             elif part[:3]=='Hyb':
-                # print(part[3:], type(part[3:]))
                 elements.append('{}% Hybrid Frame\n'.format(float(part[3:])*100))
             elif 'Leaky' in part:
                 if part.split('_')[1] == 'True':
@@ -239,24 +233,18 @@ def main(dataDir,params):
 
 if __name__=='__main__':
     
-    print(1,flush=True)
     params = make_argparser()
-    print(2,flush=True)
     data = pathlib.Path(params.rootDirectory)
-    print(3,data,flush=True)
-    tgtList = list((test,params) for test in data.iterdir())
-    print(4,tgtList,flush=True)
+    tgtList = DFS_tree(data)
     pool = mp.Pool(len(tgtList))
-    print(5,flush=True)
     try:
         results = pool.map_async(main,tgtList)  
-        print(6,flush=True)          
     except Exception as e:
         print(e)
     finally:
         pool.close()
-        print(7,flush=True)
         pool.join()
-        print(8,flush=True)
         print('***all processes of {} are done***'.format(str(data)))
             
+
+
