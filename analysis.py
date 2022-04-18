@@ -125,7 +125,7 @@ def main(dataDir):
             
             if e % batch == 0:
                 #treat batch # of games as an episode for plotting and calculating running reward
-                cumulative_scores.append(r_sum)
+                cumulative_scores.append(r_sum/20)
                 running_reward = .99*running_reward+.01*r_sum/batch
                 running_rewards.append(running_reward)
                 r_sum = 0
@@ -170,9 +170,9 @@ def main(dataDir):
         length = len(cumulative_scores)
         plt.clf()
         plt.scatter(range(length),cumulative_scores,marker='.')
-        plt.title('Episode Scores ({})'.format(', '.join(elements)))
+        plt.title('Average Game Scores ({})'.format(', '.join(elements)))
         plt.xlabel('Episodes (Batch of {} games)'.format(batch))
-        plt.ylabel('Number of pipes')
+        plt.ylabel('Number of Pipes')
         plt.savefig(os.path.join(dir,'num_pipes.png'))
         plt.clf()
 
