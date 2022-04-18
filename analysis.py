@@ -20,6 +20,9 @@ def make_argparser():
     return parser.parse_args()
 
 def isParent(dir):
+    '''The name isParent is slightly misleading, as it determines if the inputted 
+       directory is the parent to the individual test folders. Each test is con-
+       sidered a child in this function.'''
     path = pathlib.Path(dir) if not isinstance(dir,pathlib.PosixPath) else dir
     suffixes = ['.csv','.png','.txt','.p']
     for folder in path.iterdir():
@@ -30,10 +33,14 @@ def isParent(dir):
     return False
 
 def getChildren(dir):
+    '''Returns a list of pathlib.PosixPaths to the children of the inputted directory.'''
     path = pathlib.Path(dir) if not isinstance(dir,pathlib.PosixPath) else dir
     return list(child for child in path.iterdir())
 
 def DFS_tree(dirPath):
+    '''Searches whatever directory is inputted to find all the individual tests done down the tree.
+       Returns a list of pathlib.PosixPaths to each test across all experiments. Implements Depth-
+       First Search to find all tests.'''
     dir = pathlib.Path(dirPath) if not isinstance(dirPath,pathlib.PosixPath) else dirPath
     results = []
     for subfolder in dir.iterdir():
@@ -232,7 +239,10 @@ def main(path):
         return
 
 if __name__=='__main__':
-    
+    '''Leverages multi-processing in Hamming to be able to conduct graphical and numerical
+       analysis on an arbitrary number of  tests nearly simultaneously. This script will 
+       first locate each individual test in the data directory tree, then create a process 
+       to analyze the tests with a 1:1 process to test ratio.'''
     params = make_argparser()
     data = pathlib.Path(params.rootDirectory)
     tgtList = DFS_tree(data)
