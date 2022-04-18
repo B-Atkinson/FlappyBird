@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from cProfile import run
 import csv
+from email import parser
 import pathlib
 import os
 from turtle import color
@@ -10,6 +11,40 @@ import pickle
 import numpy as np
 import multiprocessing as mp
 import os
+import argparse
+
+def make_argparser():
+    parser = argparse.ArgumentParser(description='Arguments to run analysis for FlappyBird reinforcement learning with human influence.')
+    parser.add_argument('--singleExperiment', type=str2bool, default=False,
+                        help='conduct analysis on a directory, containing directories of experiments. Ex: the children of the noGPU directory  \
+                        are experiments, whose children are the individual tests. In other words, the grandchildren of noGPU are the tests to  \
+                        be analyzed. The default is False where the target directory is the grandparent of the tests.')
+    
+    parser.add_argument('--rootDirectory', type=str, default='/home/brian.atkinson/thesis/data',
+                        help='The root of the experiment tree containing all experimental directories to be analyzed. The default is that ')    
+    
+    return parser.parse_args()
+
+def isParent(dir):
+    path = pathlib.Path(dir)
+    suffixes = ['.csv','.png','.txt','.p']
+    for folder in path.iterdir():
+        if folder.suffix() in suffixes: 
+            return True
+    return False
+
+# you have to use str2bool
+# because of an issue with argparser and bool type
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('true', 't', '1'):
+        return True
+    elif v.lower() in ('false', 'f', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
 
 def plot_cdf(data, path, x_text, legend_loc, x_label, y_label, x_ticks, title=None, log_x=False):
     plt.clf()
@@ -73,10 +108,25 @@ def rearrange(oldGame):
     return neurons
 
 
-def main(dataDir):
+def main(dataDir,params):
+    if not isParent(dataDir):
+        #recursively call the same function to multiprocess experiments in children directories of the root
+        print('recursing {}'.format(str(dataDir)),flush=True)
+        tgtList = list([test,params] for test in dataDir.iterdir())
+        pool = mp.Pool(len(tgtList))
+        try:
+            results = pool.map_async(main,tgtList)           
+        except Exception as e:
+            print(e)
+        finally:
+            pool.close()
+            pool.join()
+            print('***all subprocesses of {} are done***'.format(str(dataDir)))
+            return
+
+    #if reach here, dataDir is the parent directory of the tests
     batch = 20
     print('process:',os.getpid())
-    # tests = list(exp for exp in dataDir.iterdir())
     tests = [dataDir]
 
     for dir in tests:
@@ -184,18 +234,29 @@ def main(dataDir):
         plt.ylabel('Running Average Score')
         plt.savefig(os.path.join(dir,'running_reward.png'))
         print('done analyzing',dir)
+        
+        return
 
 if __name__=='__main__':
-    data = pathlib.Path('../data/noGPU/activation_func')
-    tgtList = list(exp for exp in data.iterdir())
+    
+    print(1,flush=True)
+    params = make_argparser()
+    print(2,flush=True)
+    data = pathlib.Path(params.rootDirectory)
+    print(3,data,flush=True)
+    tgtList = list((test,params) for test in data.iterdir())
+    print(4,tgtList,flush=True)
     pool = mp.Pool(len(tgtList))
+    print(5,flush=True)
     try:
-        results = pool.map_async(main,tgtList)
-        
+        results = pool.map_async(main,tgtList)  
+        print(6,flush=True)          
     except Exception as e:
         print(e)
     finally:
         pool.close()
+        print(7,flush=True)
         pool.join()
-        print('***all processes are done***')
-
+        print(8,flush=True)
+        print('***all processes of {} are done***'.format(str(data)))
+            
