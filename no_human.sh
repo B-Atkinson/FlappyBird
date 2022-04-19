@@ -1,8 +1,8 @@
 #!/bin/bash
-#SBATCH --job-name=baseLeakyReLu5
+#SBATCH --job-name=basehybr99_5
 #SBATCH --mem=16G
 #SBATCH --time=07-00:00:00
-#SBATCH --output=base_LeakyReLu5.txt
+#SBATCH --output=base_hybr99_5.txt
 
 . /etc/profile
 
@@ -24,10 +24,10 @@ python FB_Main.py \
 --hidden_save_rate=100 \
 --gap_size=1.4 \
 --flip_heuristic=false \
---percent_hybrid=1 \
+--percent_hybrid=.99 \
 --continue_training=false \
 --init=Xavier \
---leaky=true \
+--leaky=false \
 --bias=0 \
 --checkpoint_path=null \
---output_dir=/home/brian.atkinson/thesis/data/noGPU/activation_func
+--output_dir=/home/brian.atkinson/thesis/data/noGPU/hybrid

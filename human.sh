@@ -29,6 +29,6 @@ python FB_Main.py \
 --bias=0 \
 --continue_training=false \
 --init=Xavier \
---leaky=false \
+--leaky=true \
 --checkpoint_path=null \
 --output_dir=/home/brian.atkinson/thesis/data/noGPU/activation_func
