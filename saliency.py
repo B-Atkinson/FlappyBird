@@ -42,12 +42,12 @@ def findMaxModel(dir):
     if os.path.exists(digest):
         with open(digest) as fd:
             lines = fd.readlines()
-        best = lines[1].split(',')[1].split(':')[1]        
+        best = lines[1].split(',')[1].split(':')[1]       
         if not os.path.exists(os.path.join(dir,'pickles/'+best+'.p')):
             #if the exact model is not available, choose the closest saved point
-            best = floor( best / 100 ) * 100    
+            best = floor( int(best) / 100 ) * 100    
     #will throw an exception if the digest file does not exist, fail early
-    return best
+    return str(best)
 
 def loadModel(dir):
     gameNumber = findMaxModel(dir)
@@ -68,8 +68,9 @@ def loadFrame(file):
     return RGBFrame
 
 def loadFrames(file):
-    print(file)
-    frameList = pickle.load(open(file,'rb'))
+    dir = os.path.join(file,'bestFrames.p')
+    print('loading frames from:',dir)
+    frameList = pickle.load(open(dir,'rb'))
     print('\n{} frames, each frame shape {}\n\n'.format(len(frameList),cp.shape(frameList[0])))
     # for i in range(len(frameList)):
     #     plt.imshow(np.asarray(frameList[i].get()).reshape(72,100))
@@ -168,7 +169,7 @@ def makeMap(frame,model,params):
 if __name__== '__main__':
     params = make_argparser()
     framelist = loadFrames(params.dir)
-    model = loadModel(params.model)
+    model = loadModel(params.dir)
     # for i,frame in enumerate(framelist):
     #     print(i,':',policy_forward_GPU(frame,model,params.leaky)[0])
     scoreMatrix = makeMap(framelist[10],model,params)
