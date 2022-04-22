@@ -357,6 +357,7 @@ while episode <= hparams.num_episodes:
     
     if num_pipes > best_score:
         pickle.dump(frames,open(PATH+'/bestFrames.p','wb'))
+        pickle.dump(model, open(MODEL_NAME  + str(episode) + '.p', 'wb'))
     
     #episode over, compile all frames' data to prep for backprop   
     episode_actions.append(actions)        
