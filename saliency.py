@@ -99,7 +99,6 @@ def policy_forward(screen_input, model,leaky=False):
     return p, int_h 
 
 def makeMap(frame,model):
-#   cols,rows  = np.shape(frame)
     print('frame size:',np.shape(frame))
     input = frame.get()
     blurredImg = cp.asarray(cv.GaussianBlur(input.reshape(72,100),(5,5),cv.BORDER_DEFAULT))
@@ -136,7 +135,6 @@ def makeMap(frame,model):
 
 if __name__== '__main__':
     params = make_argparser()
-    # frame = loadFrame(params.frame)
     framelist = loadFrames('/home/brian.atkinson/thesis/data/gradient_test/ht-S5-Gap1.4-Hyb1.0-FlipH_False-Leaky_True-Init_Xavier-Bias0_9286/bestFrames.p')
     model = loadModel(params.model)
     for i,frame in enumerate(framelist):

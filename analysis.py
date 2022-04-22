@@ -106,10 +106,14 @@ def main(dataDir):
         try:
             with open(os.path.join(dir,'stats.csv'),newline='') as csvFile:
                 reader = csv.reader(csvFile,delimiter=',')
+                bestScore = -1
+                bestGame = 0
                 for line in reader:
                     ep,score=int(line[0]),int(line[1])
                     eps.append(ep)
                     raw_scores.append(score)
+                    if bestScore < score:
+                        bestGame = ep
                 print('{} done reading'.format(str(dir)))
             
         except FileNotFoundError:
@@ -140,8 +144,9 @@ def main(dataDir):
         
         with open(os.path.join(dir,'digest.txt'),'w') as f:
             f.write('directory:{}\n'.format(experiment))
-            f.write('max score at epoch:{}, game:{}\n'.format(maximum,maximum*20))
-            f.write('min score at epoch:{}, game:{}'.format(minimum, minimum*20))
+            f.write('best game:{}, best score:{}\n'.format(bestGame,bestScore))
+            f.write('max running reward at epoch:{}, game:{}\n'.format(maximum,maximum*20))
+            f.write('min running reward at epoch:{}, game:{}'.format(minimum, minimum*20))
 
         #determine which pickles to load
         if (maximum*20)%100==0:
