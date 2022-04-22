@@ -1,4 +1,9 @@
 import pathlib
+# import pygame
+# from pygame.constants import K_w
+# from ple.games.flappybird import FlappyBird
+# from ple import PLE
+# import csv
 import numpy as np
 import cupy as cp
 import matplotlib.pyplot as plt
@@ -7,13 +12,14 @@ import cv2 as cv
 import pickle
 import argparse
 import os
+from math import floor
 
 def make_argparser():
     parser = argparse.ArgumentParser(description='Arguments to run analysis for FlappyBird reinforcement learning with human influence.')    
-    parser.add_argument('--frame', type=str,
-                        help='The filepath to the frame to be loaded.')        
-    parser.add_argument('--model', type=str,
-                        help='The filepath to the model to be loaded.')  
+    parser.add_argument('--dir', type=str,
+                        help='The filepath to the test directory to be loaded.')  
+    parser.add_argument('--GPU', type=str2bool,default=False,
+                        help='If true, will run the code using CuPy.')
     parser.add_argument('--saveTo', type=str,
                         help='The filepath to the directory where saliency maps should be saved.')  
     return parser.parse_args()
@@ -33,9 +39,11 @@ def findMaxModel(dir):
     if os.path.exists(digest):
         with open(digest) as fd:
             lines = fd.readlines()
-        best = lines[1].split(',')[1].split(':')[1]
+    return floor(lines[1].split(',')[1].split(':')[1] / 100 ) * 100
 
-def loadModel(file):
+def loadModel(dir):
+    gameNumber = findMaxModel(dir)
+    file = os.path.join(dir,'pickles/'+gameNumber+'.p')
     model  = pickle.load(open(file,'rb'))
     return model
 
