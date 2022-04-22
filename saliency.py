@@ -1,9 +1,4 @@
 import pathlib
-import pygame
-from pygame.constants import K_w
-from ple.games.flappybird import FlappyBird
-from ple import PLE
-# import csv
 import numpy as np
 import cupy as cp
 import matplotlib.pyplot as plt
