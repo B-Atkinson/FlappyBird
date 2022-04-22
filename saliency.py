@@ -42,12 +42,16 @@ def findMaxModel(dir):
     if os.path.exists(digest):
         with open(digest) as fd:
             lines = fd.readlines()
-        best = lines[1].split(',')[1].split(':')[1]       
+        best = lines[1].split(',')[1].split(':')[1]     
+        print('best:',best)  
+        print('lines:')
+        print(lines)
         if not os.path.exists(os.path.join(dir,'pickles/'+best+'.p')):
             #if the exact model is not available, choose the closest saved point
-            best = floor( int(best) / 100 ) * 100    
+            best = max(floor( int(best) / 100 ) * 100,1)   
     #will throw an exception if the digest file does not exist, fail early
     return str(best)
+    
 
 def loadModel(dir):
     gameNumber = findMaxModel(dir)
@@ -62,7 +66,6 @@ def loadFrame(file):
     img = image.fromarray(colorFrame)
     RGBFrame = img.convert('RGB')
     print('\n',np.shape(RGBFrame),type(RGBFrame),'\n\n')
-    # frame = colorFrame[:,:,0]
     plt.imshow(RGBFrame)
     plt.savefig('testvis.png')
     return RGBFrame
