@@ -10,7 +10,7 @@
 
 # Attributions: Much of this code was inspired or taken from Brandon Hee's research (as my job was to reproduce a behavior) as well as a blog  post 
 # from Andrej Karpathy (https://gist.github.com/karpathy/a4166c7fe253700972fcbc77e4ea32c5).
-print('starting FB',flush=True)
+print('starting FB,20APR22',flush=True)
 import os
 # import sys
 import pickle
@@ -311,6 +311,7 @@ while episode <= hparams.num_episodes:
     FLAPPYBIRD.resetPipes()   
     FLAPPYBIRD.init()
     
+    best_score = -1
     agent_score = 0
     num_pipes = 0
     prev_frame = None       
@@ -354,6 +355,8 @@ while episode <= hparams.num_episodes:
         #see http://karpathy.github.io/2016/05/31/rl/#:~:text=looking%20quite%20bleak.-,Supervised%20Learning,-.%20Before%20we%20dive
         actionTape.append(1-prob_up)
     
+    if num_pipes > best_score:
+        pickle.dump(frames,open(PATH+'/bestFrames.p','wb'))
     
     #episode over, compile all frames' data to prep for backprop   
     episode_actions.append(actions)        
