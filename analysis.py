@@ -32,6 +32,16 @@ def isParent(dir):
                 return True
     return False
 
+def isTest(dir):
+    '''Determines if the directory is a test based on file types contained.'''
+    path = pathlib.Path(dir) if not isinstance(dir,pathlib.PosixPath) else dir
+    suffixes = ['.csv','.png','.txt','.p']
+    for folder in path.iterdir():
+        suf = folder.suffix
+        if suf in suffixes: 
+            return True
+    return False
+
 def getChildren(dir):
     '''Returns a list of pathlib.PosixPaths to the children of the inputted directory.'''
     path = pathlib.Path(dir) if not isinstance(dir,pathlib.PosixPath) else dir
@@ -42,11 +52,16 @@ def DFS_tree(dirPath):
        Returns a list of pathlib.PosixPaths to each test across all experiments. Implements Depth-
        First Search to find all tests.'''
     dir = pathlib.Path(dirPath) if not isinstance(dirPath,pathlib.PosixPath) else dirPath
+    if isTest(dir):
+        #base case where the directory is a test, return itself
+        return [dir]
     results = []
     for subfolder in dir.iterdir():
         if isParent(subfolder):
+            #current directory is the grandparent of the tests
             results.extend(getChildren(subfolder))
         else:
+            #tests are more than 2 levels down, keep searching
             results.extend(DFS_tree(subfolder))
     return results
 

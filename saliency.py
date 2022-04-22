@@ -16,12 +16,15 @@ from math import floor
 
 def make_argparser():
     parser = argparse.ArgumentParser(description='Arguments to run analysis for FlappyBird reinforcement learning with human influence.')    
+    parser.add_argument('--leaky', type=str2bool,default=False,
+                        help='If true, will utilize Leaky ReLu.')
     parser.add_argument('--dir', type=str,
                         help='The filepath to the test directory to be loaded.')  
     parser.add_argument('--GPU', type=str2bool,default=False,
                         help='If true, will run the code using CuPy.')
     parser.add_argument('--saveTo', type=str,
                         help='The filepath to the directory where saliency maps should be saved.')  
+
     return parser.parse_args()
 
 def str2bool(v):
@@ -39,7 +42,12 @@ def findMaxModel(dir):
     if os.path.exists(digest):
         with open(digest) as fd:
             lines = fd.readlines()
-    return floor(lines[1].split(',')[1].split(':')[1] / 100 ) * 100
+        best = lines[1].split(',')[1].split(':')[1]        
+        if not os.path.exists(os.path.join(dir,'pickles/'+best+'.p')):
+            #if the exact model is not available, choose the closest saved point
+            best = floor( best / 100 ) * 100    
+    #will throw an exception if the digest file does not exist, fail early
+    return best
 
 def loadModel(dir):
     gameNumber = findMaxModel(dir)
@@ -97,6 +105,21 @@ def sigmoid(value):
 def policy_forward(screen_input, model,leaky=False):
     """Uses screen_input to find the intermediate hidden state values along
     with the probability of taking action 2 (int_h and p respectively)"""
+    int_h = np.dot(model['W1'], screen_input)
+    if leaky:
+        # # Leaky ReLU 
+        int_h[int_h < 0] *= .01
+    else:
+        # ReLU nonlinearity used to get hidden layer state
+        int_h[int_h < 0] = 0      
+    logp = np.dot(model['W2'], int_h)
+    #probability of moving the agent up
+    p = sigmoid(logp)
+    return p, int_h 
+
+def policy_forward_GPU(screen_input, model,leaky=False):
+    """Uses screen_input to find the intermediate hidden state values along
+    with the probability of taking action 2 (int_h and p respectively)"""
     int_h = cp.dot(model['W1'], screen_input)
     if leaky:
         # # Leaky ReLU 
@@ -107,50 +130,49 @@ def policy_forward(screen_input, model,leaky=False):
     logp = cp.dot(model['W2'], int_h)
     #probability of moving the agent up
     p = sigmoid(logp)
-    return p, int_h 
+    return p, int_h
 
-def makeMap(frame,model):
+def makeMap(frame,model,params):
     print('frame size:',np.shape(frame))
     input = frame.get()
-    blurredImg = cp.asarray(cv.GaussianBlur(input.reshape(72,100),(5,5),cv.BORDER_DEFAULT))
-    plt.clf()
-    plt.imshow(blurredImg.get())
+    if params.GPU:
+        blurredImg = cp.asarray(cv.GaussianBlur(input.reshape(72,100),(5,5),cv.BORDER_DEFAULT))
+        orig_prob = policy_forward_GPU(frame, model)
+        plt.clf()
+        plt.imshow(blurredImg.get())
+    else:
+        blurredImg = cv.GaussianBlur(input.reshape(72,100),(5,5),cv.BORDER_DEFAULT)
+        orig_prob = policy_forward(frame, model)
+        plt.clf()
+        plt.imshow(blurredImg)
     plt.title('Blurred Input Frame')
     plt.savefig('blur.png')
-    orig_prob = policy_forward(frame, model)
+    
     new_prob = []
-#   for j in range(cols):
-#     for i in range(rows):
-#       old = frame[j,i]
-#       frame[j,i] = blurredImg[j,i]
-#       input = frame.ravel()
-#       p,_= policy_forward(input, model)
-#       new_prob.append(p)
-#       frame[j,i] = old
-
     for i in range(7200):
         old = frame[i]
         frame[i] = blurredImg[i]
         input = frame.ravel()
-        p,_= policy_forward(input, model)
+        if params.GPU:
+            p,_= policy_forward_GPU(input,model,params.leaky)
+        else:
+            p,_= policy_forward(input,model,params.leaky)
         new_prob.append(p)
         frame[i] = old
     scores = np.array(list(map(lambda i: .5*(orig_prob-i)**2,new_prob))).reshape(72,100)
-    # test = np.array(list(map(lambda i: .5*(orig_prob-i)**2,new_prob))).reshape(72,100)
-
     print('# pixel scores:',np.shape(scores))
-    # return (scores.reshape(cols,rows)).astype(np.uint8),test
-    return scores #,test
+    return scores 
 
 
 
 if __name__== '__main__':
     params = make_argparser()
-    framelist = loadFrames('/home/brian.atkinson/thesis/data/gradient_test/ht-S5-Gap1.4-Hyb1.0-FlipH_False-Leaky_True-Init_Xavier-Bias0_9286/bestFrames.p')
+    framelist = loadFrames(params.dir)
     model = loadModel(params.model)
-    for i,frame in enumerate(framelist):
-        print(i,':',policy_forward(frame,model,True)[0])
-    scoreMatrix = makeMap(framelist[3],model)
+    # for i,frame in enumerate(framelist):
+    #     print(i,':',policy_forward_GPU(frame,model,params.leaky)[0])
+    scoreMatrix = makeMap(framelist[10],model,params)
+    
 
     # saliencyMap = cv.applyColorMap(scoreMatrix,cv.COLORMAP_JET)
     # plt.clf()
