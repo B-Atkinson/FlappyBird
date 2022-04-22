@@ -42,33 +42,29 @@ def findMaxModel(dir):
     if os.path.exists(digest):
         with open(digest) as fd:
             lines = fd.readlines()
-        best = lines[1].split(',')[1].split(':')[1]     
-        print('best:',best)  
-        print('lines:')
-        print(lines)
+        best = lines[1].split(',')[1].split(':')[1]
         if not os.path.exists(os.path.join(dir,'pickles/'+best+'.p')):
             #if the exact model is not available, choose the closest saved point
             best = max(floor( int(best) / 100 ) * 100,1)   
     #will throw an exception if the digest file does not exist, fail early
     return str(best)
     
-
 def loadModel(dir):
     gameNumber = findMaxModel(dir)
     file = os.path.join(dir,'pickles/'+gameNumber+'.p')
     model  = pickle.load(open(file,'rb'))
     return model
 
-def loadFrame(file):
-    print(file)
-    colorFrame = image.imread(file)
-    print('\n',np.shape(colorFrame),type(colorFrame))
-    img = image.fromarray(colorFrame)
-    RGBFrame = img.convert('RGB')
-    print('\n',np.shape(RGBFrame),type(RGBFrame),'\n\n')
-    plt.imshow(RGBFrame)
-    plt.savefig('testvis.png')
-    return RGBFrame
+# def loadFrame(file):
+#     print(file)
+#     colorFrame = image.imread(file)
+#     print('\n',np.shape(colorFrame),type(colorFrame))
+#     img = image.fromarray(colorFrame)
+#     RGBFrame = img.convert('RGB')
+#     print('\n',np.shape(RGBFrame),type(RGBFrame),'\n\n')
+#     plt.imshow(RGBFrame)
+#     plt.savefig('testvis.png')
+#     return RGBFrame
 
 def loadFrames(file):
     dir = os.path.join(file,'bestFrames.p')
@@ -108,7 +104,8 @@ def sigmoid(value):
 
 def policy_forward(screen_input, model,leaky=False):
     """Uses screen_input to find the intermediate hidden state values along
-    with the probability of taking action 2 (int_h and p respectively)"""
+    with the probability of taking action 2 (int_h and p respectively). Does not
+    utilize a GPU or CuPy."""
     int_h = np.dot(model['W1'], screen_input)
     if leaky:
         # # Leaky ReLU 
@@ -123,7 +120,8 @@ def policy_forward(screen_input, model,leaky=False):
 
 def policy_forward_GPU(screen_input, model,leaky=False):
     """Uses screen_input to find the intermediate hidden state values along
-    with the probability of taking action 2 (int_h and p respectively)"""
+    with the probability of taking action 2 (int_h and p respectively). Uses CuPy
+    to achieve GPU acceleration."""
     int_h = cp.dot(model['W1'], screen_input)
     if leaky:
         # # Leaky ReLU 
@@ -140,27 +138,26 @@ def makeMap(frame,model,params):
     print('frame size:',np.shape(frame))
     input = frame.get()
     if params.GPU:
-        blurredImg = cp.asarray(cv.GaussianBlur(input.reshape(72,100),(5,5),cv.BORDER_DEFAULT))
+        blurredImg = cp.asarray(cv.GaussianBlur(input.reshape(72,100),(5,5),cv.BORDER_DEFAULT)).ravel()
         orig_prob = policy_forward_GPU(frame, model)
         plt.clf()
         plt.imshow(blurredImg.get())
     else:
-        blurredImg = cv.GaussianBlur(input.reshape(72,100),(5,5),cv.BORDER_DEFAULT)
+        blurredImg = cv.GaussianBlur(input.reshape(72,100),(5,5),cv.BORDER_DEFAULT).ravel()
         orig_prob = policy_forward(frame, model)
         plt.clf()
         plt.imshow(blurredImg)
     plt.title('Blurred Input Frame')
-    plt.savefig('blur.png')
+    
     
     new_prob = []
     for i in range(7200):
         old = frame[i]
         frame[i] = blurredImg[i]
-        input = frame.ravel()
         if params.GPU:
-            p,_= policy_forward_GPU(input,model,params.leaky)
+            p,_= policy_forward_GPU(frame,model,params.leaky)
         else:
-            p,_= policy_forward(input,model,params.leaky)
+            p,_= policy_forward(frame,model,params.leaky)
         new_prob.append(p)
         frame[i] = old
     scores = np.array(list(map(lambda i: .5*(orig_prob-i)**2,new_prob))).reshape(72,100)
@@ -175,7 +172,10 @@ if __name__== '__main__':
     model = loadModel(params.dir)
     # for i,frame in enumerate(framelist):
     #     print(i,':',policy_forward_GPU(frame,model,params.leaky)[0])
-    scoreMatrix = makeMap(framelist[10],model,params)
+    for i in range(len(framelist)):
+        scoreMatrix = makeMap(framelist[i],model,params)
+        plt.savefig('blur{}.png'.format(i))
+        plt.cla()
     
 
     # saliencyMap = cv.applyColorMap(scoreMatrix,cv.COLORMAP_JET)
