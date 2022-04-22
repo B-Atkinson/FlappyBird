@@ -167,6 +167,7 @@ def main(path):
                     raw_scores.append(score)
                     if bestScore < score:
                         bestGame = ep
+                        bestScore = score
                 print('{} done reading'.format(str(dir)))
             
         except FileNotFoundError:
