@@ -303,7 +303,7 @@ if cont:
     print('done priming\n\n',flush=True)
 
 print('commencing training',flush=True)
-
+best_score = -1
 #regular training loop
 while episode <= hparams.num_episodes:
     #reset the pygame object and pipe group list to have the same set of pipes each episode to begin the episode
@@ -311,7 +311,7 @@ while episode <= hparams.num_episodes:
     FLAPPYBIRD.resetPipes()   
     FLAPPYBIRD.init()
     
-    best_score = -1
+    
     agent_score = 0
     num_pipes = 0
     prev_frame = None       
@@ -358,6 +358,7 @@ while episode <= hparams.num_episodes:
     if num_pipes > best_score:
         pickle.dump(frames,open(PATH+'/bestFrames.p','wb'))
         pickle.dump(model, open(MODEL_NAME  + str(episode) + '.p', 'wb'))
+        best_score = num_pipes
     
     #episode over, compile all frames' data to prep for backprop   
     episode_actions.append(actions)        
