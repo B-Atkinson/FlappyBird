@@ -299,6 +299,7 @@ if cont:
     print('done priming\n\n',flush=True)
 
 print('commencing training',flush=True)
+best_score = -1
 
 #regular training loop
 while episode <= hparams.num_episodes:
@@ -349,6 +350,11 @@ while episode <= hparams.num_episodes:
         #this tape is used to encourage the action in the future if we see a similar input
         #see http://karpathy.github.io/2016/05/31/rl/#:~:text=looking%20quite%20bleak.-,Supervised%20Learning,-.%20Before%20we%20dive
         actionTape.append(1-prob_up)
+    
+    if num_pipes > best_score:
+        pickle.dump(frames,open(PATH+'/bestFrames.p','wb'))
+        pickle.dump(model, open(MODEL_NAME  + str(episode) + '.p', 'wb'))
+        best_score = num_pipes
     
     
     #episode over, compile all frames' data to prep for backprop   
