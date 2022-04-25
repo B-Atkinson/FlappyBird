@@ -139,14 +139,16 @@ def makeMap(frame,model,params):
     input = frame.get()
     if params.GPU:
         blurredImg = cp.asarray(cv.GaussianBlur(input.reshape(72,100),(5,5),cv.BORDER_DEFAULT)).ravel()
-        orig_prob = policy_forward_GPU(frame, model)
+        orig_prob,_ = policy_forward_GPU(frame, model,params.leaky)
+        print(type(blurredImg.get()))
+        img = blurredImg.get().reshape(72,100)
         plt.clf()
-        plt.imshow(blurredImg.get())
+        plt.imshow(img)
     else:
         blurredImg = cv.GaussianBlur(input.reshape(72,100),(5,5),cv.BORDER_DEFAULT).ravel()
-        orig_prob = policy_forward(frame, model)
+        orig_prob,_ = policy_forward(frame, model,params.leaky)
         plt.clf()
-        plt.imshow(blurredImg)
+        plt.imshow(blurredImg.reshape(72,100))
     plt.title('Blurred Input Frame')
     
     
@@ -156,10 +158,12 @@ def makeMap(frame,model,params):
         frame[i] = blurredImg[i]
         if params.GPU:
             p,_= policy_forward_GPU(frame,model,params.leaky)
+            p = p.get()
         else:
             p,_= policy_forward(frame,model,params.leaky)
         new_prob.append(p)
         frame[i] = old
+    print(type(new_prob),type(orig_prob))
     scores = np.array(list(map(lambda i: .5*(orig_prob-i)**2,new_prob))).reshape(72,100)
     print('# pixel scores:',np.shape(scores))
     return scores 
