@@ -1,8 +1,8 @@
 #!/bin/bash
-#SBATCH --job-name=basehybr99_5
+#SBATCH --job-name=B_Hybrid.5-5
 #SBATCH --mem=16G
 #SBATCH --time=07-00:00:00
-#SBATCH --output=base_hybr99_5.txt
+#SBATCH --output=B_Hybrid.5-5.txt
 
 . /etc/profile
 
@@ -24,7 +24,7 @@ python FB_Main.py \
 --hidden_save_rate=100 \
 --gap_size=1.4 \
 --flip_heuristic=false \
---percent_hybrid=.99 \
+--percent_hybrid=.5 \
 --continue_training=false \
 --init=Xavier \
 --leaky=false \
