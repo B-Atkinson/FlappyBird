@@ -3,7 +3,7 @@
 #SBATCH --partition=beards
 #SBATCH --gres=gpu:1
 #SBATCH --mem=16G
-#SBATCH --time=00:00:20
+#SBATCH --time=00:10:00
 #SBATCH --output=saliency.txt
 
 . /etc/profile

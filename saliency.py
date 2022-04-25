@@ -42,9 +42,12 @@ def findMaxModel(dir):
     if os.path.exists(digest):
         with open(digest) as fd:
             lines = fd.readlines()
-        best = lines[1].split(',')[1].split(':')[1]
-        if not os.path.exists(os.path.join(dir,'pickles/'+best+'.p')):
-            #if the exact model is not available, choose the closest saved point
+        best = lines[1].split(',')[0].split(':')[1]
+        bestPath = os.path.join(dir,'pickles/'+best+'.p')
+        print('path to best model:',str(bestPath))
+        if not os.path.exists(bestPath):
+            #if the exact model is not available, choose the next highest saved point without going over
+            print('\n***True best model unavailable, choosing closest option.***\n\n')
             best = max(floor( int(best) / 100 ) * 100,1)   
     #will throw an exception if the digest file does not exist, fail early
     return str(best)
@@ -55,29 +58,12 @@ def loadModel(dir):
     model  = pickle.load(open(file,'rb'))
     return model
 
-# def loadFrame(file):
-#     print(file)
-#     colorFrame = image.imread(file)
-#     print('\n',np.shape(colorFrame),type(colorFrame))
-#     img = image.fromarray(colorFrame)
-#     RGBFrame = img.convert('RGB')
-#     print('\n',np.shape(RGBFrame),type(RGBFrame),'\n\n')
-#     plt.imshow(RGBFrame)
-#     plt.savefig('testvis.png')
-#     return RGBFrame
-
 def loadFrames(file):
     dir = os.path.join(file,'bestFrames.p')
     print('loading frames from:',dir)
     frameList = pickle.load(open(dir,'rb'))
-    print('\n{} frames, each frame shape {}\n\n'.format(len(frameList),cp.shape(frameList[0])))
-    # for i in range(len(frameList)):
-    #     plt.imshow(np.asarray(frameList[i].get()).reshape(72,100))
-    #     plt.savefig('frames/testvis{}.png'.format(i))
+    print('\n{} frames, each frame shape {}'.format(len(frameList),cp.shape(frameList[0])))
     return frameList
-
-def getSaveDir(modelPath):
-    return pathlib.PurePath.parents(modelPath)[1]
 
 def processScreen(obs):
     '''Takes as input a 512x288x3 numpy ndarray and downsamples it twice to get a 100x72 output array. Usless background 
@@ -135,23 +121,21 @@ def policy_forward_GPU(screen_input, model,leaky=False):
     return p, int_h
 
 def makeMap(frame,model,params):
-    print('frame size:',np.shape(frame))
     input = frame.get()
     if params.GPU:
         blurredImg = cp.asarray(cv.GaussianBlur(input.reshape(72,100),(5,5),cv.BORDER_DEFAULT)).ravel()
         orig_prob,_ = policy_forward_GPU(frame, model,params.leaky)
-        print(type(blurredImg.get()))
-        img = blurredImg.get().reshape(72,100)
-        plt.clf()
-        plt.imshow(img)
+        orig_prob = orig_prob.get()
+        # img = blurredImg.get().reshape(72,100)
+        # plt.clf()
+        # plt.imshow(img)
     else:
         blurredImg = cv.GaussianBlur(input.reshape(72,100),(5,5),cv.BORDER_DEFAULT).ravel()
         orig_prob,_ = policy_forward(frame, model,params.leaky)
-        plt.clf()
-        plt.imshow(blurredImg.reshape(72,100))
-    plt.title('Blurred Input Frame')
+        # plt.clf()
+        # plt.imshow(blurredImg.reshape(72,100))
     
-    
+    print('\nframe probability:',orig_prob)
     new_prob = []
     for i in range(7200):
         old = frame[i]
@@ -163,10 +147,11 @@ def makeMap(frame,model,params):
             p,_= policy_forward(frame,model,params.leaky)
         new_prob.append(p)
         frame[i] = old
-    print(type(new_prob),type(orig_prob))
-    scores = np.array(list(map(lambda i: .5*(orig_prob-i)**2,new_prob))).reshape(72,100)
-    print('# pixel scores:',np.shape(scores))
-    return scores 
+    
+    scores = np.array(list(map(lambda i: .5*(orig_prob-i)**2,new_prob)))
+    print('mean: {} median: {} min: {} max: {}'.format(np.mean(new_prob),np.median(new_prob),np.min(new_prob),np.max(new_prob)))
+    print('mean score: {} median score: {} min: {} max: {}'.format(np.mean(scores),np.median(scores),np.min(scores),np.max(scores)))
+    return scores.reshape(72,100)
 
 
 
@@ -174,16 +159,25 @@ if __name__== '__main__':
     params = make_argparser()
     framelist = loadFrames(params.dir)
     model = loadModel(params.dir)
-    # for i,frame in enumerate(framelist):
-    #     print(i,':',policy_forward_GPU(frame,model,params.leaky)[0])
-    for i in range(len(framelist)):
-        scoreMatrix = makeMap(framelist[i],model,params)
-        plt.savefig('blur{}.png'.format(i))
-        plt.cla()
-    
+    mapDir = os.path.join(params.dir,'SaliencyMaps')
+    if not os.path.exists(mapDir):
+        os.makedirs(mapDir)
 
-    # saliencyMap = cv.applyColorMap(scoreMatrix,cv.COLORMAP_JET)
-    # plt.clf()
-    # plt.imshow(saliencyMap)
-    # plt.title('Saliency Map')
-    # plt.savefig(str(getSaveDir(params.model))+'/SaliencyMap.png')
+    for i in range(0,len(framelist),10):
+        scoreMatrix = makeMap(framelist[i],model,params)
+        # plt.savefig('blur{}.png'.format(i))
+        # plt.cla()
+    
+        saliencyMap = cv.applyColorMap(scoreMatrix.astype(np.uint8),cv.COLORMAP_JET)
+        
+        plt.clf()
+        # try:
+        #     plt.imshow(framelist[i].reshape(72,100))
+        # except TypeError:
+        #     #if loading GPU frames, reshaping throws an error, convert to NumPy
+        #     frame = framelist[i].get()
+        #     plt.imshow(frame.reshape(72,100))
+        plt.imshow(saliencyMap,alpha=.5)
+        plt.title('Saliency Map {}'.format(i))
+        plt.savefig(mapDir+'/map{}.png'.format(i))
+        if i > 60: break
