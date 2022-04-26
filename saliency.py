@@ -7,12 +7,12 @@ import pathlib
 import numpy as np
 import cupy as cp
 import matplotlib.pyplot as plt
-import matplotlib.image as image
 import cv2 as cv
 import pickle
 import argparse
 import os
 from math import floor
+from PIL import Image
 
 def make_argparser():
     parser = argparse.ArgumentParser(description='Arguments to run analysis for FlappyBird reinforcement learning with human influence.')    
@@ -174,12 +174,19 @@ def makeMap(frame,model,params):
     print('before normalizing',np.shape(scores))
     print('mean: {:.5f} median: {:.5f} min: {:.5f} max: {:.5f}'.format(np.mean(new_prob),np.median(new_prob),np.min(new_prob),np.max(new_prob)))
     print('mean score: {:.5f} median score: {:.5f} min: {:.5f} max: {:.5f}'.format(np.mean(scores),np.median(scores),np.min(scores),np.max(scores)))
+    pers = np.percentile(scores,[25,50,75])
+    print('1Q: {:.6f}  2Q: {:.6f}  3Q: {:.6f}'.format(pers[0],pers[1],pers[2]))
 
-    normalScores = np.array(list(map(lambda j: 0 if j < 10**-6 else j, scores)))
+    for i in range(len(scores)):
+        if scores[i] < 10**-6:
+            scores[i] = 0
+    
     print('\nafter normalizing')
-    print('mean score: {:.5f} median score: {:.5f} min: {:.5f} max: {:.5f}'.format(np.mean(normalScores),np.median(normalScores),np.min(normalScores),np.max(normalScores)))
+    print('mean score: {:.5f} median score: {:.5f} min: {:.5f} max: {:.5f}'.format(np.mean(scores),np.median(scores),np.min(scores),np.max(scores)))
+    pers = np.percentile(scores,[25,50,75])
+    print('1Q: {:.6f}  2Q: {:.6f}  3Q: {:.6f}'.format(pers[0],pers[1],pers[2]))
 
-    return normalScores.reshape(72,100)
+    return np.array(scores).reshape(72,100)
 
 
 
@@ -199,18 +206,22 @@ if __name__== '__main__':
         #calculate pixel scores in the frame
         scoreMatrix = makeMap(framelist[i],model,params)
         # plt.savefig('blur{}.png'.format(i))
+        im = Image.fromarray(scoreMatrix)
+        im = im.convert(mode="P")
+
         
         plt.cla()
+        # saliencyMap = cv.applyColorMap(np.array(im).astype(np.uint8),cv.COLORMAP_JET)
         saliencyMap = cv.applyColorMap(scoreMatrix.astype(np.uint8),cv.COLORMAP_JET)
-        
+
         # #overlay the saliency map on the frame, and save to disk
         # try:
-        #     plt.imshow(framelist[i].reshape(72,100))
+        #     plt.imshow(framelist[i].reshape(72,100),alpha=.75)
         # except TypeError:
         #     #if loading GPU frames, reshaping throws an error, convert to NumPy
         #     frame = framelist[i].get()
-        #     plt.imshow(frame.reshape(72,100))
-        plt.imshow(saliencyMap,alpha=.5)
+        #     plt.imshow(frame.reshape(72,100),alpha=.75)
+        plt.imshow(saliencyMap)
         plt.title('Saliency Map {}'.format(i))
         plt.savefig(mapDir+'/map{}.png'.format(i))
         
