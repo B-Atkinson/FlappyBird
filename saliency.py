@@ -8,6 +8,7 @@ import numpy as np
 import cupy as cp
 import matplotlib.pyplot as plt
 import cv2 as cv
+import seaborn as sns
 import pickle
 import argparse
 import os
@@ -186,7 +187,7 @@ def makeMap(frame,model,params):
     pers = np.percentile(scores,[25,50,75])
     print('1Q: {:.6f}  2Q: {:.6f}  3Q: {:.6f}'.format(pers[0],pers[1],pers[2]))
 
-    return np.array(scores).reshape(72,100)
+    return np.array(scores).reshape(72,100),min,max
 
 
 
@@ -204,25 +205,25 @@ if __name__== '__main__':
     #create a saliency map for each loaded frame
     for i in range(0,len(framelist),20):
         #calculate pixel scores in the frame
-        scoreMatrix = makeMap(framelist[i],model,params)
+        # scoreMatrix,min,max = makeMap(framelist[i],model,params)
         # plt.savefig('blur{}.png'.format(i))
-        im = Image.fromarray(scoreMatrix)
-        im = im.convert(mode="P")
 
         
-        plt.cla()
-        # saliencyMap = cv.applyColorMap(np.array(im).astype(np.uint8),cv.COLORMAP_JET)
-        saliencyMap = cv.applyColorMap(scoreMatrix.astype(np.uint8),cv.COLORMAP_JET)
+        plt.close()
+        # saliencyMap = sns.heatmap(scoreMatrix,robust=True,cmap=plt.cm.get_cmap("jet"),xticklabels=False,yticklabels=False)
+        
+        # fig = saliencyMap.get_figure()
+
+        # fig.savefig(mapDir+'/map{}.png'.format(i))
 
         # #overlay the saliency map on the frame, and save to disk
-        # try:
-        #     plt.imshow(framelist[i].reshape(72,100),alpha=.75)
-        # except TypeError:
-        #     #if loading GPU frames, reshaping throws an error, convert to NumPy
-        #     frame = framelist[i].get()
-        #     plt.imshow(frame.reshape(72,100),alpha=.75)
-        plt.imshow(saliencyMap)
-        plt.title('Saliency Map {}'.format(i))
-        plt.savefig(mapDir+'/map{}.png'.format(i))
+        try:
+            plt.imshow(framelist[i].reshape(72,100),alpha=.75)
+        except TypeError:
+            #if loading GPU frames, reshaping throws an error, convert to NumPy
+            frame = framelist[i].get()
+            plt.imshow(frame.reshape(72,100),alpha=.75)
+        # plt.imshow(saliencyMap)
+        plt.title('Frame {}'.format(i))
+        plt.savefig(mapDir+'/frame{}.png'.format(i))
         
-        if i > 60: break
