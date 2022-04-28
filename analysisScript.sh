@@ -7,10 +7,9 @@
 #SBATCH --output=analysis.txt
 
 . /etc/profile
-
 module load lang/miniconda3
-
 source activate py38
+echo "">analysis.txt
 
 python analysis.py \
 --rootDirectory=/home/brian.atkinson/thesis/data
