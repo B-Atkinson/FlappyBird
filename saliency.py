@@ -279,7 +279,7 @@ if __name__== '__main__':
         os.makedirs(frameDir)
 
     #create a saliency map for each loaded frame
-    for i in range(0,len(framelist)):
+    for i in range(0,len(framelist),5):
         print('\n\n*********frame {}**********'.format(i),flush=True)
         # print('checksum:',cp.sum(framelist[i]))
         plt.close()
