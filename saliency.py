@@ -240,7 +240,8 @@ def makeMapGPU(origFrame,model,params,frameNum):
         # checksum = newChecksum
     
     #apply scoring function to the perturbed frame
-    scores = list(map(lambda i: .5*(orig_prob-i)**2,new_prob))
+    # scores = list(map(lambda i: .5*(orig_prob-i)**2,new_prob))
+    scores = list(map(lambda i: abs(orig_prob-i),new_prob))
 
     #generate some statistical data for analysis
     print('mean: {:.5f} median: {:.5f} min: {:.5f} max: {:.5f}\n'.format(np.mean(new_prob),np.median(new_prob),np.min(new_prob),np.max(new_prob)))
@@ -249,14 +250,16 @@ def makeMapGPU(origFrame,model,params,frameNum):
     pers = np.percentile(scores,[25,50,75])
     print('1Q: {:.6f}  2Q: {:.6f}  3Q: {:.6f}'.format(pers[0],pers[1],pers[2]))
 
-    # for i in range(len(scores)):
-    #     if scores[i] < 10**-6:
-    #         scores[i] = 0
+    with open('scores_{}.txt'.format(frameNum),'w') as file:
+        file.write('original prob: {}\n'.format(orig_prob))
+        for i in range(len(scores)):
+            file.write('pixel prob: {}   score: {}\n'.format(new_prob[i],scores[i]))
+
     
-    print('\nafter normalizing the scores')
-    print('mean: {:.5f} median: {:.5f} min: {:.5f} max: {:.5f}'.format(np.mean(scores),np.median(scores),np.min(scores),np.max(scores)))
-    pers = np.percentile(scores,[25,50,75])
-    print('1Q: {:.6f}  2Q: {:.6f}  3Q: {:.6f}'.format(pers[0],pers[1],pers[2]))
+    # print('\nafter normalizing the scores')
+    # print('mean: {:.5f} median: {:.5f} min: {:.5f} max: {:.5f}'.format(np.mean(scores),np.median(scores),np.min(scores),np.max(scores)))
+    # pers = np.percentile(scores,[25,50,75])
+    # print('1Q: {:.6f}  2Q: {:.6f}  3Q: {:.6f}'.format(pers[0],pers[1],pers[2]))
 
     return np.array(scores).reshape(72,100),min,max
 
@@ -279,7 +282,7 @@ if __name__== '__main__':
         os.makedirs(frameDir)
 
     #create a saliency map for each loaded frame
-    for i in range(0,len(framelist),5):
+    for i in range(0,len(framelist)):
         print('\n\n*********frame {}**********'.format(i),flush=True)
         # print('checksum:',cp.sum(framelist[i]))
         plt.close()
