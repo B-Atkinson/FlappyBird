@@ -68,10 +68,15 @@ def loadModel(dir):
 def loadFrames(dir):
     '''Takes as input the filepath to the test directory, and returns a homogenous python list containing the frames from the best performing episode of that test.
     Each item in the returned list is either a Numpy array (if the test was done purely on CPUs) or a CuPy array (if the test was done on GPUs).'''
-    dir = os.path.join(dir,'bestFrames.p')
-    print('loading frames from:',dir)
-    frameList = pickle.load(open(dir,'rb'))
-    print('\n{} frames, each frame shape {}'.format(len(frameList),cp.shape(frameList[0])))
+    try:
+        dir = os.path.join(dir,'bestFrames.p')
+        print('loading frames from:',dir)
+        frameList = pickle.load(open(dir,'rb'))
+        print('\n{} frames, each frame shape {}'.format(len(frameList),cp.shape(frameList[0])))
+    except FileNotFoundError:
+        print('no best frames in test, using another batch')
+        frameList = pickle.load(open('/home/brian.atkinson/thesis/data/gradient_test/ht-S5-Gap1.4-Hyb1.0-FlipH_False-Leaky_True-Init_Xavier-Bias0_6785/bestFrames.p','rb'))
+        print('\n{} frames, each frame shape {}'.format(len(frameList),cp.shape(frameList[0])))
     return frameList
 
 def sigmoid(value):
@@ -128,13 +133,15 @@ def makeMapCPU(origFrame,model,params,frameNum):
     
     #create a blurred image to pull individual pixel values from, which saves computation
     #both branches accomplish the same task, getting the probability
+    if isinstance(origFrame,cp.core.core.ndarray):
+        origFrame = origFrame.get()
     frame = np.copy(origFrame)
-    input = np.copy(frame)
+    input = np.copy(frame).reshape(72,100)
 
     # #uncomment this section if you want to verify that the frame isn't being clobbered during read/writes
     # checksum = np.sum(origFrame)
 
-    blurredImg = cv.GaussianBlur(input.reshape(72,100),(5,5),cv.BORDER_DEFAULT).ravel()
+    blurredImg = cv.GaussianBlur(input,(5,5),cv.BORDER_DEFAULT).ravel()
     orig_prob,_ = policy_forward(frame, model,params.leaky)
     
     if id(blurredImg) == id(frame):
@@ -164,20 +171,12 @@ def makeMapCPU(origFrame,model,params,frameNum):
         # checksum = newChecksum
     
     #apply scoring function to the perturbed frame
-    scores = list(map(lambda i: .5*(orig_prob-i)**2,new_prob))
+    # scores = list(map(lambda i: .5*(orig_prob-i)**2,new_prob))
+    scores = list(map(lambda i: abs(orig_prob-i),new_prob))
 
     #generate some statistical data for analysis
     print('mean: {:.5f} median: {:.5f} min: {:.5f} max: {:.5f}\n'.format(np.mean(new_prob),np.median(new_prob),np.min(new_prob),np.max(new_prob)))
     print('before normalizing the scores',np.shape(scores))
-    print('mean: {:.5f} median: {:.5f} min: {:.5f} max: {:.5f}'.format(np.mean(scores),np.median(scores),np.min(scores),np.max(scores)))
-    pers = np.percentile(scores,[25,50,75])
-    print('1Q: {:.6f}  2Q: {:.6f}  3Q: {:.6f}'.format(pers[0],pers[1],pers[2]))
-
-    for i in range(len(scores)):
-        if scores[i] < 10**-6:
-            scores[i] = 0
-    
-    print('\nafter normalizing the scores')
     print('mean: {:.5f} median: {:.5f} min: {:.5f} max: {:.5f}'.format(np.mean(scores),np.median(scores),np.min(scores),np.max(scores)))
     pers = np.percentile(scores,[25,50,75])
     print('1Q: {:.6f}  2Q: {:.6f}  3Q: {:.6f}'.format(pers[0],pers[1],pers[2]))
@@ -250,16 +249,11 @@ def makeMapGPU(origFrame,model,params,frameNum):
     pers = np.percentile(scores,[25,50,75])
     print('1Q: {:.6f}  2Q: {:.6f}  3Q: {:.6f}'.format(pers[0],pers[1],pers[2]))
 
-    with open('scores_{}.txt'.format(frameNum),'w') as file:
+    with open('../score_files/scores_{}.txt'.format(frameNum),'w') as file:
+        file.write('{}\n'.format(str(params.dir)))
         file.write('original prob: {}\n'.format(orig_prob))
         for i in range(len(scores)):
             file.write('pixel prob: {}   score: {}\n'.format(new_prob[i],scores[i]))
-
-    
-    # print('\nafter normalizing the scores')
-    # print('mean: {:.5f} median: {:.5f} min: {:.5f} max: {:.5f}'.format(np.mean(scores),np.median(scores),np.min(scores),np.max(scores)))
-    # pers = np.percentile(scores,[25,50,75])
-    # print('1Q: {:.6f}  2Q: {:.6f}  3Q: {:.6f}'.format(pers[0],pers[1],pers[2]))
 
     return np.array(scores).reshape(72,100),min,max
 
