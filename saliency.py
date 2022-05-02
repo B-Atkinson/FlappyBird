@@ -181,6 +181,12 @@ def makeMapCPU(origFrame,model,params,frameNum):
     pers = np.percentile(scores,[25,50,75])
     print('1Q: {:.6f}  2Q: {:.6f}  3Q: {:.6f}'.format(pers[0],pers[1],pers[2]))
 
+    with open('../score_files/scores_{}.txt'.format(frameNum),'w') as file:
+        file.write('{}\n'.format(str(params.dir)))
+        file.write('original prob: {}\n'.format(orig_prob))
+        for i in range(len(scores)):
+            file.write('pixel prob: {}   score: {}\n'.format(new_prob[i],scores[i]))
+
     return np.array(scores).reshape(72,100),min,max
 
 
