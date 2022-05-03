@@ -264,6 +264,77 @@ def makeMapGPU(origFrame,model,params,frameNum):
     return np.array(scores).reshape(72,100),min,max
 
 
+def makeMapNot(origFrame,model,params,frameNum):
+    '''Uses a frame and the network weights to calculate the score of each pixel. To begin the unaltered frame is passed through
+    the network to calculate a base probability of flapping. The score of each pixel is calculated by applying a 5x5 Gaussian 
+    Kernel to a single pixel, and then passing the modified frame through the network. The pixel's score is then determined by
+    squaring the difference between the original and modified probabilities, and dividing by 2.
+    Inputs:
+    frame- a single cupy or numpy ndarray of shape (72,100) that contains the frame data
+    model- a numpy or cupy ndarray that contains the model weights for the hidden and output layers
+    params- the command line arguments passed in to the python script, this is used to determine if Leaky ReLu is used
+
+    Outputs:
+    scores- a numpy array of shape (72,100) representing the score each pixel received after being blurred and tested
+    '''
+    
+    #create a blurred image to pull individual pixel values from, which saves computation
+    #both branches accomplish the same task, getting the probability
+    frame = cp.copy(origFrame)
+
+    # #uncomment this section if you want to verify that the frame isn't being clobbered during read/writes
+    # checksum = cp.sum(origFrame)
+
+    orig_prob,_ = policy_forward_GPU(frame, model,params.leaky)
+    orig_prob = orig_prob.get()
+    
+    # print('\n\n*********frame {}**********'.format(frameNum))
+    print('probability data:')
+    print('original probability:',orig_prob)
+    new_prob = []
+    old = np.array([0])
+    for i in range(7200):
+        #negate pixel value
+        old = np.copy(frame[i])
+        frame[i] = int(not(frame[i]))
+        # newCheck = cp.sum(frame)
+        # if newCheck!=checksum:
+        #     print('new: {} old: {}'.format(newCheck,checksum))
+
+        #get the perturbed probability
+        p,_= policy_forward_GPU(frame,model,params.leaky)
+        p = p.get()
+        #save the result and write the original target pixel value back to the frame 
+        new_prob.append(p)
+        frame[i] = cp.copy(old)
+
+        # #uncomment this section if you want to verify that the frame isn't being clobbered during read/writes
+        # newChecksum = cp.sum(frame)
+        # if newChecksum != checksum:
+        # # if not (frame==origFrame).all():
+        #     print('\nstep {} difference: {} checksum: {}   copied frame: {}\n'.format(i,checksum-newChecksum,checksum,newChecksum))
+        #     raise Exception('\n***copied frame is not equal to original after calculating scores for frame {}***'.format(frameNum))
+        # checksum = newChecksum
+    
+    #apply scoring function to the perturbed frame
+    # scores = list(map(lambda i: .5*(orig_prob-i)**2,new_prob))
+    scores = list(map(lambda i: abs(orig_prob-i),new_prob))
+
+    #generate some statistical data for analysis
+    print('mean: {:.5f} median: {:.5f} min: {:.5f} max: {:.5f}\n'.format(np.mean(new_prob),np.median(new_prob),np.min(new_prob),np.max(new_prob)))
+    print('before normalizing the scores',np.shape(scores))
+    print('mean: {:.5f} median: {:.5f} min: {:.5f} max: {:.5f}'.format(np.mean(scores),np.median(scores),np.min(scores),np.max(scores)))
+    pers = np.percentile(scores,[25,50,75])
+    print('1Q: {:.6f}  2Q: {:.6f}  3Q: {:.6f}'.format(pers[0],pers[1],pers[2]))
+
+    with open('../score_files/scores_{}.txt'.format(frameNum),'w') as file:
+        file.write('{}\n'.format(str(params.dir)))
+        file.write('original prob: {}\n'.format(orig_prob))
+        for i in range(len(scores)):
+            file.write('pixel prob: {}   score: {}\n'.format(new_prob[i],scores[i]))
+
+    return np.array(scores).reshape(72,100),min,max
+
 
 if __name__== '__main__':
     #retrieve arguments, the frames, and the model weights
@@ -298,7 +369,7 @@ if __name__== '__main__':
 
         #calculate pixel scores in the frame
         if params.GPU:
-            scoreMatrix,min,max = makeMapGPU(framelist[i],model,params,i)
+            scoreMatrix,min,max = makeMapNot(framelist[i],model,params,i)
         else:
             scoreMatrix,min,max = makeMapCPU(framelist[i],model,params,i)
         # if i > 80: break
@@ -307,7 +378,7 @@ if __name__== '__main__':
         plt.clf()
         saliencyMap = sns.heatmap(scoreMatrix,robust=True,cmap=plt.cm.get_cmap("jet"),xticklabels=False,yticklabels=False)
         plt.title('Saliency Map {}'.format(i))
-        plt.savefig(mapDir+'/map{}.png'.format(i))
+        plt.savefig(mapDir+'/not_map{}.png'.format(i))
         
 
         
