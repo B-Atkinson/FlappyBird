@@ -65,19 +65,39 @@ def loadModel(dir):
     model  = pickle.load(open(file,'rb'))
     return model
 
+def loadWorstModel(dir):
+    '''Takes as input the filepath to the test directory, and returns the worst model available based on the digest file, which should be the last one. 
+    The returned object is a Numpy ndarray if the test was run purely on CPUs, and is a CuPy array if the test was done on GPUs.'''
+    digest = os.path.join(dir,'digest.txt')
+    if os.path.exists(digest):
+        with open(digest) as fd:
+            lines = fd.readlines()
+        worst = lines[3].split(',')[1].split(':')[1]
+        worstPath = os.path.join(dir,'pickles/'+worst+'.p')
+        print('path to worst model:',str(worstPath))
+        if not os.path.exists(worstPath):
+            #if the exact model is not available, choose the next highest saved point without going over
+            print('\n***True worst model unavailable, choosing closest option.***\n\n')
+            worst = max(floor( int(worst) / 100 ) * 100,1)   
+    #will throw an exception if the digest file does not exist, fail early
+    file = os.path.join(dir,'pickles/'+str(worst)+'.p')
+    model  = pickle.load(open(file,'rb'))
+    return model
+
 def loadFrames(dir):
     '''Takes as input the filepath to the test directory, and returns a homogenous python list containing the frames from the best performing episode of that test.
-    Each item in the returned list is either a Numpy array (if the test was done purely on CPUs) or a CuPy array (if the test was done on GPUs).'''
+    Each item in the returned list is either a Numpy array (if the test was done purely on CPUs) or a CuPy array (if the test was done on GPUs). Drops the first 10
+    frames because they tend to be zerod out.'''
     try:
         dir = os.path.join(dir,'bestFrames.p')
         print('loading frames from:',dir)
         frameList = pickle.load(open(dir,'rb'))
-        print('\n{} frames, each frame shape {}'.format(len(frameList),cp.shape(frameList[0])))
+        # print('\n{} frames, each frame shape {}'.format(len(frameList),cp.shape(frameList[0])))
     except FileNotFoundError:
         print('no best frames in test, using another batch')
         frameList = pickle.load(open('/home/brian.atkinson/thesis/data/gradient_test/ht-S5-Gap1.4-Hyb1.0-FlipH_False-Leaky_True-Init_Xavier-Bias0_6785/bestFrames.p','rb'))
         print('\n{} frames, each frame shape {}'.format(len(frameList),cp.shape(frameList[0])))
-    return frameList
+    return frameList[10:]
 
 def sigmoid(value):
     """Activation function used at the output of the neural network."""
@@ -138,18 +158,14 @@ def makeMapCPU(origFrame,model,params,frameNum):
     frame = np.copy(origFrame)
     input = np.copy(frame).reshape(72,100)
 
-    # #uncomment this section if you want to verify that the frame isn't being clobbered during read/writes
-    # checksum = np.sum(origFrame)
-
     blurredImg = cv.GaussianBlur(input,(5,5),cv.BORDER_DEFAULT).ravel()
     orig_prob,_ = policy_forward(frame, model,params.leaky)
     
     if id(blurredImg) == id(frame):
         print('\nThere is an issue with blurring\n')
     
-    print('\n\n*********frame {}**********'.format(frameNum))
-    print('probability data:')
-    print('original probability:',orig_prob)
+    # print('probability data:')
+    # print('original probability:',orig_prob)
     new_prob = []
     old = np.array([0])
     for i in range(7200):
@@ -161,25 +177,16 @@ def makeMapCPU(origFrame,model,params,frameNum):
         #save the result and write the original target pixel value back to the frame 
         new_prob.append(p)
         frame[i] = np.copy(old[0])
-
-        # #uncomment this section if you want to verify that the frame isn't being clobbered during read/writes
-        # newChecksum = np.sum(frame)
-        # if newChecksum != checksum:
-        # # if not (frame==origFrame).all():
-        #     print('\nstep {} difference: {} checksum: {}   copied frame: {}\n'.format(i,checksum-newChecksum,checksum,newChecksum))
-        #     raise Exception('\n***copied frame is not equal to original after calculating scores for frame {}***'.format(frameNum))
-        # checksum = newChecksum
     
     #apply scoring function to the perturbed frame
-    # scores = list(map(lambda i: .5*(orig_prob-i)**2,new_prob))
     scores = list(map(lambda i: abs(orig_prob-i),new_prob))
 
     #generate some statistical data for analysis
-    print('mean: {:.5f} median: {:.5f} min: {:.5f} max: {:.5f}\n'.format(np.mean(new_prob),np.median(new_prob),np.min(new_prob),np.max(new_prob)))
-    print('before normalizing the scores',np.shape(scores))
-    print('mean: {:.5f} median: {:.5f} min: {:.5f} max: {:.5f}'.format(np.mean(scores),np.median(scores),np.min(scores),np.max(scores)))
+    # print('mean: {:.5f} median: {:.5f} min: {:.5f} max: {:.5f}\n'.format(np.mean(new_prob),np.median(new_prob),np.min(new_prob),np.max(new_prob)))
+    # print('before normalizing the scores',np.shape(scores))
+    # print('mean: {:.5f} median: {:.5f} min: {:.5f} max: {:.5f}'.format(np.mean(scores),np.median(scores),np.min(scores),np.max(scores)))
     pers = np.percentile(scores,[25,50,75])
-    print('1Q: {:.6f}  2Q: {:.6f}  3Q: {:.6f}'.format(pers[0],pers[1],pers[2]))
+    # print('1Q: {:.6f}  2Q: {:.6f}  3Q: {:.6f}'.format(pers[0],pers[1],pers[2]))
 
     with open('../score_files/scores_{}.txt'.format(frameNum),'w') as file:
         file.write('{}\n'.format(str(params.dir)))
@@ -187,7 +194,51 @@ def makeMapCPU(origFrame,model,params,frameNum):
         for i in range(len(scores)):
             file.write('pixel prob: {}   score: {}\n'.format(new_prob[i],scores[i]))
 
-    return np.array(scores).reshape(72,100),min,max
+    return np.array(scores).reshape(72,100)
+
+def makeMapNotCPU(origFrame,model,params,frameNum):
+    '''*****************
+    Inputs:
+    frame- a single cupy or numpy ndarray of shape (72,100) that contains the frame data
+    model- a numpy or cupy ndarray that contains the model weights for the hidden and output layers
+    params- the command line arguments passed in to the python script, this is used to determine if Leaky ReLu is used
+
+    Outputs:
+    scores- a numpy array of shape (72,100) representing the score each pixel received after being blurred and tested
+    '''
+    
+    #create a blurred image to pull individual pixel values from, which saves computation
+    #both branches accomplish the same task, getting the probability
+    if isinstance(origFrame,cp.core.core.ndarray):
+        origFrame = origFrame.get()
+    frame = np.copy(origFrame)
+    orig_prob,_ = policy_forward(frame, model,params.leaky)
+    
+    # print('probability data:')
+    # print('original probability:',orig_prob)
+    new_prob = []
+    old = np.array([0])
+    for i in range(7200):
+        #write the blurred pixel value to the target pixel, save the old value
+        old[0] = np.copy(frame[i])
+        frame[i] = int(not(frame[i]))
+        #get the perturbed probability
+        p,_= policy_forward(frame,model,params.leaky)
+        #save the result and write the original target pixel value back to the frame 
+        new_prob.append(p)
+        frame[i] = np.copy(old[0])
+    
+    #apply scoring function to the perturbed frame
+    scores = list(map(lambda i: abs(orig_prob-i),new_prob))
+
+    #generate some statistical data for analysis
+    # print('mean: {:.5f} median: {:.5f} min: {:.5f} max: {:.5f}\n'.format(np.mean(new_prob),np.median(new_prob),np.min(new_prob),np.max(new_prob)))
+    # print('before normalizing the scores',np.shape(scores))
+    # print('mean: {:.5f} median: {:.5f} min: {:.5f} max: {:.5f}'.format(np.mean(scores),np.median(scores),np.min(scores),np.max(scores)))
+    pers = np.percentile(scores,[25,50,75])
+    # print('1Q: {:.6f}  2Q: {:.6f}  3Q: {:.6f}'.format(pers[0],pers[1],pers[2]))
+
+    return np.array(scores).reshape(72,100)
 
 
 def makeMapGPU(origFrame,model,params,frameNum):
@@ -209,25 +260,18 @@ def makeMapGPU(origFrame,model,params,frameNum):
     frame = cp.copy(origFrame)
     input = cp.copy(frame.get())
 
-    # #uncomment this section if you want to verify that the frame isn't being clobbered during read/writes
-    # checksum = cp.sum(origFrame)
-
     blurredImg = cp.asarray(cv.GaussianBlur(input.reshape(72,100),(5,5),cv.BORDER_DEFAULT)).ravel()
     orig_prob,_ = policy_forward_GPU(frame, model,params.leaky)
     orig_prob = orig_prob.get()
     
-    # print('\n\n*********frame {}**********'.format(frameNum))
-    print('probability data:')
-    print('original probability:',orig_prob)
+    # print('probability data:')
+    # print('original probability:',orig_prob)
     new_prob = []
     old = cp.array([0])
     for i in range(7200):
         #write the blurred pixel value to the target pixel, save the old value
         old[0] = cp.copy(frame[i])
         frame[i] = cp.copy(blurredImg[i])
-        # newCheck = cp.sum(frame)
-        # if newCheck!=checksum:
-        #     print('new: {} old: {}'.format(newCheck,checksum))
 
         #get the perturbed probability
         p,_= policy_forward_GPU(frame,model,params.leaky)
@@ -235,25 +279,16 @@ def makeMapGPU(origFrame,model,params,frameNum):
         #save the result and write the original target pixel value back to the frame 
         new_prob.append(p)
         frame[i] = cp.copy(old[0])
-
-        # #uncomment this section if you want to verify that the frame isn't being clobbered during read/writes
-        # newChecksum = cp.sum(frame)
-        # if newChecksum != checksum:
-        # # if not (frame==origFrame).all():
-        #     print('\nstep {} difference: {} checksum: {}   copied frame: {}\n'.format(i,checksum-newChecksum,checksum,newChecksum))
-        #     raise Exception('\n***copied frame is not equal to original after calculating scores for frame {}***'.format(frameNum))
-        # checksum = newChecksum
     
     #apply scoring function to the perturbed frame
-    # scores = list(map(lambda i: .5*(orig_prob-i)**2,new_prob))
     scores = list(map(lambda i: abs(orig_prob-i),new_prob))
 
     #generate some statistical data for analysis
-    print('mean: {:.5f} median: {:.5f} min: {:.5f} max: {:.5f}\n'.format(np.mean(new_prob),np.median(new_prob),np.min(new_prob),np.max(new_prob)))
-    print('before normalizing the scores',np.shape(scores))
-    print('mean: {:.5f} median: {:.5f} min: {:.5f} max: {:.5f}'.format(np.mean(scores),np.median(scores),np.min(scores),np.max(scores)))
+    # print('mean: {:.5f} median: {:.5f} min: {:.5f} max: {:.5f}\n'.format(np.mean(new_prob),np.median(new_prob),np.min(new_prob),np.max(new_prob)))
+    # print('before normalizing the scores',np.shape(scores))
+    # print('mean: {:.5f} median: {:.5f} min: {:.5f} max: {:.5f}'.format(np.mean(scores),np.median(scores),np.min(scores),np.max(scores)))
     pers = np.percentile(scores,[25,50,75])
-    print('1Q: {:.6f}  2Q: {:.6f}  3Q: {:.6f}'.format(pers[0],pers[1],pers[2]))
+    # print('1Q: {:.6f}  2Q: {:.6f}  3Q: {:.6f}'.format(pers[0],pers[1],pers[2]))
 
     with open('../score_files/scores_{}.txt'.format(frameNum),'w') as file:
         file.write('{}\n'.format(str(params.dir)))
@@ -261,7 +296,7 @@ def makeMapGPU(origFrame,model,params,frameNum):
         for i in range(len(scores)):
             file.write('pixel prob: {}   score: {}\n'.format(new_prob[i],scores[i]))
 
-    return np.array(scores).reshape(72,100),min,max
+    return np.array(scores).reshape(72,100)
 
 
 def makeMapNot(origFrame,model,params,frameNum):
@@ -277,29 +312,18 @@ def makeMapNot(origFrame,model,params,frameNum):
     Outputs:
     scores- a numpy array of shape (72,100) representing the score each pixel received after being blurred and tested
     '''
-    
-    #create a blurred image to pull individual pixel values from, which saves computation
-    #both branches accomplish the same task, getting the probability
     frame = cp.copy(origFrame)
-
-    # #uncomment this section if you want to verify that the frame isn't being clobbered during read/writes
-    # checksum = cp.sum(origFrame)
-
     orig_prob,_ = policy_forward_GPU(frame, model,params.leaky)
     orig_prob = orig_prob.get()
     
-    # print('\n\n*********frame {}**********'.format(frameNum))
-    print('probability data:')
-    print('original probability:',orig_prob)
+    # print('probability data:')
+    # print('original probability:',orig_prob)
     new_prob = []
     old = np.array([0])
     for i in range(7200):
         #negate pixel value
         old = np.copy(frame[i])
         frame[i] = int(not(frame[i]))
-        # newCheck = cp.sum(frame)
-        # if newCheck!=checksum:
-        #     print('new: {} old: {}'.format(newCheck,checksum))
 
         #get the perturbed probability
         p,_= policy_forward_GPU(frame,model,params.leaky)
@@ -307,79 +331,82 @@ def makeMapNot(origFrame,model,params,frameNum):
         #save the result and write the original target pixel value back to the frame 
         new_prob.append(p)
         frame[i] = cp.copy(old)
-
-        # #uncomment this section if you want to verify that the frame isn't being clobbered during read/writes
-        # newChecksum = cp.sum(frame)
-        # if newChecksum != checksum:
-        # # if not (frame==origFrame).all():
-        #     print('\nstep {} difference: {} checksum: {}   copied frame: {}\n'.format(i,checksum-newChecksum,checksum,newChecksum))
-        #     raise Exception('\n***copied frame is not equal to original after calculating scores for frame {}***'.format(frameNum))
-        # checksum = newChecksum
-    
-    #apply scoring function to the perturbed frame
-    # scores = list(map(lambda i: .5*(orig_prob-i)**2,new_prob))
     scores = list(map(lambda i: abs(orig_prob-i),new_prob))
 
     #generate some statistical data for analysis
-    print('mean: {:.5f} median: {:.5f} min: {:.5f} max: {:.5f}\n'.format(np.mean(new_prob),np.median(new_prob),np.min(new_prob),np.max(new_prob)))
-    print('before normalizing the scores',np.shape(scores))
-    print('mean: {:.5f} median: {:.5f} min: {:.5f} max: {:.5f}'.format(np.mean(scores),np.median(scores),np.min(scores),np.max(scores)))
+    # print('mean: {:.5f} median: {:.5f} min: {:.5f} max: {:.5f}\n'.format(np.mean(new_prob),np.median(new_prob),np.min(new_prob),np.max(new_prob)))
+    # print('before normalizing the scores',np.shape(scores))
+    # print('mean: {:.5f} median: {:.5f} min: {:.5f} max: {:.5f}'.format(np.mean(scores),np.median(scores),np.min(scores),np.max(scores)))
     pers = np.percentile(scores,[25,50,75])
-    print('1Q: {:.6f}  2Q: {:.6f}  3Q: {:.6f}'.format(pers[0],pers[1],pers[2]))
+    # print('1Q: {:.6f}  2Q: {:.6f}  3Q: {:.6f}'.format(pers[0],pers[1],pers[2]))
 
-    with open('../score_files/scores_{}.txt'.format(frameNum),'w') as file:
-        file.write('{}\n'.format(str(params.dir)))
-        file.write('original prob: {}\n'.format(orig_prob))
-        for i in range(len(scores)):
-            file.write('pixel prob: {}   score: {}\n'.format(new_prob[i],scores[i]))
-
-    return np.array(scores).reshape(72,100),min,max
+    return np.array(scores).reshape(72,100)
 
 
 if __name__== '__main__':
     #retrieve arguments, the frames, and the model weights
     params = make_argparser()
     framelist = loadFrames(params.dir)
-    model = loadModel(params.dir)
+    bestModel = loadModel(params.dir)
+    worstModel = loadWorstModel(params.dir)
+    models = {'best':bestModel,'worst':worstModel}
 
-    #create a subdirectory to store the saliency maps
-    mapDir = os.path.join(params.dir,'SaliencyMaps')
-    if not os.path.exists(mapDir):
-        os.makedirs(mapDir)
+    #create best and worst agent directories
+    for agent in models.keys():
+        dir = os.path.join(params.dir,agent)
+        if not os.path.exists(dir):
+            os.makedirs(dir)
 
+        #create a subdirectory to store the saliency maps
+        mapDir = os.path.join(dir,'SaliencyMaps')
+        if not os.path.exists(mapDir):
+            os.makedirs(mapDir)
+        
+        #create a subdirectory to store the frames
+        featDir = os.path.join(dir,'FeatureMaps')
+        if not os.path.exists(featDir):
+            os.makedirs(featDir)
+    
     #create a subdirectory to store the frames
     frameDir = os.path.join(params.dir,'Frames')
     if not os.path.exists(frameDir):
         os.makedirs(frameDir)
 
-    #create a saliency map for each loaded frame
-    for i in range(0,len(framelist)):
+
+
+    #create an input and model saliency map for each loaded frame
+    for i in range(0,len(framelist),10):
         print('\n\n*********frame {}**********'.format(i),flush=True)
-        # print('checksum:',cp.sum(framelist[i]))
         plt.close()
-        # #need to overlay the saliency map on the frame, and save to disk
         try:
             plt.imshow(framelist[i].reshape(72,100))
         except TypeError:
             #if loading GPU frames, reshaping throws an error, convert to NumPy
             frame = framelist[i].get()
             plt.imshow(frame.reshape(72,100))
-        plt.title('Frame {}'.format(i))
-        plt.savefig(frameDir+'/frame{}.png'.format(i))
+            plt.title('Frame {}'.format(i))
+            plt.savefig(frameDir+'/frame{}.png'.format(i))
 
-        #calculate pixel scores in the frame
-        if params.GPU:
-            scoreMatrix,min,max = makeMapNot(framelist[i],model,params,i)
-        else:
-            scoreMatrix,min,max = makeMapCPU(framelist[i],model,params,i)
-        # if i > 80: break
+        for agent in models.keys():
+            #calculate pixel scores in the frame
+            if params.GPU:
+                scoreMatrix = makeMapGPU(framelist[i],models[agent],params,i)
+                featureMatrix = makeMapNot(framelist[i],models[agent],params,i)
 
-        #plot saliency map
-        plt.clf()
-        saliencyMap = sns.heatmap(scoreMatrix,robust=True,cmap=plt.cm.get_cmap("jet"),xticklabels=False,yticklabels=False)
-        plt.title('Saliency Map {}'.format(i))
-        plt.savefig(mapDir+'/not_map{}.png'.format(i))
-        
+            else:
+                scoreMatrix = makeMapCPU(framelist[i],models[agent],params,i)
+                featureMatrix = makeMapNotCPU(framelist[i],models[agent],params,i)
 
-        
-        
+            #plot saliency map
+            plt.clf()
+            saliencyMap = sns.heatmap(scoreMatrix,robust=True,cmap=plt.cm.get_cmap("jet"),xticklabels=False,yticklabels=False)
+            plt.title('{} Agent Saliency Map {}'.format(agent,i))
+            plt.savefig(params.dir+'/{}/SaliencyMaps/input_map{}.png'.format(agent,i))
+
+            #plot feature map
+            plt.clf()
+            featureMap = sns.heatmap(featureMatrix,robust=True,cmap=plt.cm.get_cmap("jet"),xticklabels=False,yticklabels=False)
+            plt.title('{} Agent Network Feature Map {}'.format(agent,i))
+            plt.savefig(params.dir+'/{}/FeatureMaps/feat_map{}.png'.format(agent,i))
+
+        if i>80:break
