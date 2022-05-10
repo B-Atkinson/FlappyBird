@@ -17,5 +17,5 @@ python saliency.py \
 --leaky=true \
 --GPU=true  \
 --num_processors=4 \
---mp=true \ 
+--mp=true \
 --interval=10

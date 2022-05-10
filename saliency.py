@@ -29,7 +29,8 @@ def make_argparser():
     parser.add_argument('--mp', type=str2bool, default=False,
                         help='If true, will run the code in multiple processes to decrease runtime. Requires num_processors to be >1.')
     parser.add_argument('--interval', type=int, default=10,
-                        help='')
+                        help='Defines how many frames to analyze. The default of 10 would analyze every 10th frame. It is recommended \
+                        that the interval be no smaller than 10 for 100-frame sequences or larger, due to the runtime of this program.')
     return parser.parse_args()
 
 def str2bool(v):
