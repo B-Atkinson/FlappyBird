@@ -257,21 +257,21 @@ def makeMapGPU(origFrame,model,params,frameNum):
         new_prob.append(p)
         frame[i] = cp.copy(old[0])
 
-        if 100<=i<109:
+        if 100<=i<150:
             print('pixel {}\norig prob={} pert prob={}\n\n'.format(i,orig_prob,p))
             testList.append(p)
-            if i == 108: print(flush=True)
+            if i == 149: print(flush=True)
             
     
     #apply scoring function to the perturbed frame
     scores = list(map(lambda i: abs(orig_prob-i),new_prob))
-    for i in range(100,109):
+    for i in range(100,150):
             p = testList.pop(0)
             match = (orig_prob-p)==(scores[i])
-            print('pixel {} scores match:{}'.format(i,match))
+            # print('pixel {} scores match:{}'.format(i,match))
             if not match:
                 print('pert prob={}   orig prob={}   auto score={}   hand score={}'.format(p,orig_prob,scores[i],orig_prob-p),flush=True)
-    print(flush=True)
+    # print(flush=True)
     return np.array(scores).reshape(72,100)
 
 
@@ -354,7 +354,7 @@ if __name__== '__main__':
     framelist = loadFrames(params.dir)
     bestModel = loadModel(params.dir)
     worstModel = loadWorstModel(params.dir)
-    models = {'best':bestModel,'worst':worstModel}
+    models = {'Best':bestModel,'Worst':worstModel}
 
     #create best and worst agent directories
     for agent in models.keys():
@@ -424,14 +424,14 @@ if __name__== '__main__':
 
                 #plot saliency map
                 plt.clf()
-                saliencyMap = sns.heatmap(scoreMatrix,robust=True,cmap=plt.cm.get_cmap("jet"),xticklabels=False,yticklabels=False)
+                saliencyMap = sns.heatmap(scoreMatrix,robust=False,cmap=plt.cm.get_cmap("jet"),xticklabels=False,yticklabels=False)
                 plt.title('{} Agent Saliency Map {}'.format(agent,i))
                 plt.savefig(params.dir+'/{}/SaliencyMaps/input_map{}.png'.format(agent,i))
 
                 #plot feature map
                 plt.clf()
-                featureMap = sns.heatmap(featureMatrix,robust=True,cmap=plt.cm.get_cmap("jet"),xticklabels=False,yticklabels=False)
+                featureMap = sns.heatmap(featureMatrix,robust=False,cmap=plt.cm.get_cmap("jet"),xticklabels=False,yticklabels=False)
                 plt.title('{} Agent Network Feature Map {}'.format(agent,i))
                 plt.savefig(params.dir+'/{}/FeatureMaps/feat_map{}.png'.format(agent,i))
 
-            if i>0:break
+            # if i>100:break
