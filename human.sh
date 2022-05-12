@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=GradTest
+#SBATCH --job-name=iterate
 #SBATCH --nodes=1
 #SBATCH --partition=beards
 #SBATCH --gres=gpu:1
@@ -30,4 +30,4 @@ python FB_Main.py \
 --percent_hybrid=1 \
 --init=Xavier \
 --leaky=true \
---output_dir=/home/brian.atkinson/thesis/data/gradient_test
+--output_dir=/home/brian.atkinson/thesis/data/iterate_pipes
