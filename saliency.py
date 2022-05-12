@@ -244,6 +244,7 @@ def makeMapGPU(origFrame,model,params,frameNum):
     orig_prob = orig_prob.get()
     new_prob = []
     old = cp.array([0])
+    testList=[]
     for i in range(7200):
         #write the blurred pixel value to the target pixel, save the old value
         old[0] = cp.copy(frame[i])
@@ -255,9 +256,22 @@ def makeMapGPU(origFrame,model,params,frameNum):
         #save the result and write the original target pixel value back to the frame 
         new_prob.append(p)
         frame[i] = cp.copy(old[0])
+
+        if 100<=i<109:
+            print('pixel {}\norig prob={} pert prob={}\n\n'.format(i,orig_prob,p))
+            testList.append(p)
+            if i == 108: print(flush=True)
+            
     
     #apply scoring function to the perturbed frame
     scores = list(map(lambda i: abs(orig_prob-i),new_prob))
+    for i in range(100,109):
+            p = testList.pop(0)
+            match = (orig_prob-p)==(scores[i])
+            print('pixel {} scores match:{}'.format(i,match))
+            if not match:
+                print('pert prob={}   orig prob={}   auto score={}   hand score={}'.format(p,orig_prob,scores[i],orig_prob-p),flush=True)
+    print(flush=True)
     return np.array(scores).reshape(72,100)
 
 
@@ -420,4 +434,4 @@ if __name__== '__main__':
                 plt.title('{} Agent Network Feature Map {}'.format(agent,i))
                 plt.savefig(params.dir+'/{}/FeatureMaps/feat_map{}.png'.format(agent,i))
 
-            if i>80:break
+            if i>0:break
