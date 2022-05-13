@@ -26,6 +26,7 @@ import params
 from matplotlib import pyplot as plt
 plt.clf()
 magnitudes = {'W1':[],'W2':[]}
+magnitudes_RMS = {'W1':[],'W2':[]}
 
 
 hparams = params.get_hparams()
@@ -204,7 +205,7 @@ def processScreen(obs):
                 pass                
             else:
                 obs[i,j] = 1
-    return obs.astype(np.float).ravel()
+    return obs.astype(float).ravel()
 
 def reloadEnvironment(game, FB, rng, hparams, numEpisodes, path):
     '''Replays recorded series of moves through the environment, agent, and random number generator in order to have the 
@@ -391,12 +392,15 @@ while episode <= hparams.num_episodes:
             
         w1_before = model['W1']
         for k, v in model.items():
-            gradArray = np.array(grad_buffer[k])
+            gradArray = np.array(grad_buffer[k]).ravel()
             magnitudes[k].append(np.sqrt(gradArray.dot(gradArray)))
             g = grad_buffer[k]  # gradient
             rmsprop_cache[k] = hparams.decay_rate * rmsprop_cache[k] + (1 - hparams.decay_rate) * g ** 2
             model[k] += hparams.learning_rate * g / (np.sqrt(rmsprop_cache[k]) + 1e-5)
+            gradArrayRMS = np.array(hparams.learning_rate * g / (np.sqrt(rmsprop_cache[k]) + 1e-5)).ravel()
+            magnitudes_RMS[k].append(np.sqrt(gradArrayRMS.dot(gradArrayRMS)))
             grad_buffer[k] = np.zeros_like(v)  # reset batch gradient buffer
+
             
     #Save and empty the actions and score per episode buffers every X episodes
     if episode % hparams.save_stats == 0:
@@ -418,10 +422,16 @@ while episode <= hparams.num_episodes:
     episode += 1
     if episode > 400:break
 
-for k,v in magnitudes:
+for k in magnitudes:
     plt.clf()
-    plt.plot(v)
-    plt.title('{} Gradient Magnitude'.format(k))
+    plt.plot(magnitudes[k])
+    plt.title('{} Gradient Magnitude Before RMS'.format(k))
+    plt.savefig(PATH+'/{}_gradient.png'.format(k))
+
+for k in magnitudes_RMS:
+    plt.clf()
+    plt.plot(magnitudes_RMS[k])
+    plt.title('{} Gradient Magnitude After RMS'.format(k))
     plt.savefig(PATH+'/{}_gradient.png'.format(k))
 print('training completed',flush=True)
 #### End Training-----------------------------------------------------------------
