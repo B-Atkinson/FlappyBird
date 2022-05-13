@@ -277,6 +277,7 @@ if not hparams.render:
 FLAPPYBIRD = FlappyBird(pipe_gap=GAP, rngSeed=hparams.seed, pipeSeed=hparams.seed+10)
 game = PLE(FLAPPYBIRD, display_screen=hparams.render, force_fps=True, rng=hparams.seed, reward_values=REWARDDICT)
 game.init()
+pipeSeed = hparams.seed
 #### End Environment Setup -------------------------------------------------------
 
 
@@ -307,6 +308,10 @@ best_score = -1
 #regular training loop
 while episode <= hparams.num_episodes:
     #reset the pygame object and pipe group list to have the same set of pipes each episode to begin the episode
+    if episode % 5000 == 0:
+        pipeSeed += 5
+        FLAPPYBIRD = FlappyBird(pipe_gap=GAP, rngSeed=hparams.seed, pipeSeed=pipeSeed)
+        game = PLE(FLAPPYBIRD, display_screen=hparams.render, force_fps=True, rng=hparams.seed, reward_values=REWARDDICT)
     game.reset_game()
     FLAPPYBIRD.resetPipes()   
     FLAPPYBIRD.init()
