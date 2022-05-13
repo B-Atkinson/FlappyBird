@@ -23,6 +23,10 @@ from ple import PLE
 import pygame
 from pygame.constants import K_w
 import params
+from matplotlib import pyplot as plt
+plt.clf()
+magnitudes = {'W1':[],'W2':[]}
+
 
 hparams = params.get_hparams()
 #specified in ple/__init__.py lines 187-194
@@ -380,13 +384,15 @@ while episode <= hparams.num_episodes:
     
     # accumulate grad over batch
     for k in model:
-        grad_buffer[k] += gradient[k]  
+        grad_buffer[k] += gradient[k]
 
     # perform rmsprop parameter update every batch_size episodes
     if episode % hparams.batch_size == 0:
             
         w1_before = model['W1']
         for k, v in model.items():
+            gradArray = np.array(grad_buffer[k])
+            magnitudes[k].append(np.sqrt(gradArray.dot(gradArray)))
             g = grad_buffer[k]  # gradient
             rmsprop_cache[k] = hparams.decay_rate * rmsprop_cache[k] + (1 - hparams.decay_rate) * g ** 2
             model[k] += hparams.learning_rate * g / (np.sqrt(rmsprop_cache[k]) + 1e-5)
@@ -410,6 +416,12 @@ while episode <= hparams.num_episodes:
                 episode_actions = []
 
     episode += 1
+    if episode > 400:break
 
+for k,v in magnitudes:
+    plt.clf()
+    plt.plot(v)
+    plt.title('{} Gradient Magnitude'.format(k))
+    plt.savefig(PATH+'/{}_gradient.png'.format(k))
 print('training completed',flush=True)
 #### End Training-----------------------------------------------------------------
