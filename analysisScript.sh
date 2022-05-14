@@ -1,5 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=analysis
+#SBATCH --partition=beards
+#SBATCH --gres=gpu:1
 #SBATCH --nodes=3 
 #SBATCH --ntasks-per-node=10
 #SBATCH --mem=16G
