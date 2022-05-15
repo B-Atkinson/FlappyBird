@@ -420,18 +420,18 @@ while episode <= hparams.num_episodes:
                 episode_actions = []
 
     episode += 1
-    if episode > 400:break
+    # if episode > 100:break
 
 for k in magnitudes:
     plt.clf()
     plt.plot(magnitudes[k])
     plt.title('{} Gradient Magnitude Before RMS'.format(k))
-    plt.savefig(PATH+'/{}_gradient.png'.format(k))
+    plt.savefig(PATH+'/{}_gradient_before.png'.format(k))
 
 for k in magnitudes_RMS:
     plt.clf()
     plt.plot(magnitudes_RMS[k])
     plt.title('{} Gradient Magnitude After RMS'.format(k))
-    plt.savefig(PATH+'/{}_gradient.png'.format(k))
+    plt.savefig(PATH+'/{}_gradient_after.png'.format(k))
 print('training completed',flush=True)
 #### End Training-----------------------------------------------------------------
