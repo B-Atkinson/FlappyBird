@@ -57,12 +57,12 @@ REWARDDICT = {"positive":hparams.pipe_reward, "loss":hparams.loss_reward}
 #define filepath for saving results
 if hparams.human:
     PATH = hparams.output_dir + "/ht" + "-S" + str(hparams.seed) + "-Gap" +str(hparams.gap_size)\
-        +"-Hyb"+str(hparams.percent_hybrid) +"-FlipH_"+str(hparams.flip_heuristic)+"-Leaky_"+str(hparams.leaky)+\
-            "-Init_"+str(hparams.init)+"-Bias"+str(hparams.bias)
+        +"-Hyb"+str(hparams.percent_hybrid) +"-Leaky_"+str(hparams.leaky)+\
+            "-Init_"+str(hparams.init)
 else:
     PATH = hparams.output_dir + "/no_ht" + "-S" + str(hparams.seed) + "-Gap" +str(hparams.gap_size)\
-        +"-Hyb"+str(hparams.percent_hybrid) +"-FlipH_"+str(hparams.flip_heuristic)+"-Leaky_"+str(hparams.leaky)+\
-            "-Init_"+str(hparams.init)+"-Bias"+str(hparams.bias)
+        +"-Hyb"+str(hparams.percent_hybrid) +"-Leaky_"+str(hparams.leaky)+\
+            "-Init_"+str(hparams.init)
 
 try:
     os.makedirs(os.path.dirname(PATH),exist_ok=False)
@@ -278,6 +278,8 @@ if not hparams.render:
 FLAPPYBIRD = FlappyBird(pipe_gap=GAP, rngSeed=hparams.seed, pipeSeed=hparams.seed+10)
 game = PLE(FLAPPYBIRD, display_screen=False, force_fps=True, rng=hparams.seed, reward_values=REWARDDICT)
 game.init()
+pipeSeed = hparams.seed+10
+rngSeed = hparams.seed
 #### End Environment Setup -------------------------------------------------------
 
 
@@ -308,6 +310,12 @@ best_score = -1
 
 #regular training loop
 while episode <= hparams.num_episodes:
+    if (episode > 1) and (episode-1) % 1000 == 0:
+        pipeSeed += 5
+        rngSeed += 5
+        FLAPPYBIRD = FlappyBird(pipe_gap=GAP, rngSeed=rngSeed, pipeSeed=pipeSeed)
+        game = PLE(FLAPPYBIRD, display_screen=False, force_fps=True, rng=rngSeed, reward_values=REWARDDICT)
+        game.init()
     #reset the pygame object and pipe group list to have the same set of pipes each episode to begin the episode
     game.reset_game()
     FLAPPYBIRD.resetPipes()   
