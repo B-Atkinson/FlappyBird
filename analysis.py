@@ -232,20 +232,34 @@ def main(path):
             #plot max and min CDFs
             with open(os.path.join(dir,'activations/{}.p'.format(maxP)),'rb') as f:
                 maxAct = pickle.load(f)
-            if not isinstance(maxAct,np.ndarray):
-                maxAct = maxAct.get()
+            # if isinstance(maxAct,np.ndarray):
+            #     maxAct = maxAct.get()
             maxDict = makeDict(maxAct)
             plot_cdf(maxDict,path=os.path.join(dir,'max_CDF'),x_text='Values',log_x=True,x_ticks=None,x_label='Values',y_label='Prob',title='Max Values',legend_loc='lower right')
+        except ImportError:
+            print('\n***activations for {} require CuPy***'.format(dir))
+        except OSError:
+            print('\n***file not found, using different activation set for {}***'.format(dir))
+            #subtract 100 from activation file
+        except Exception as e:
+            print('\n***error bulding CDFs for {}***'.format(dir))
+            print(e)
+
+        try:
             with open(os.path.join(dir,'activations/{}.p'.format(minP)),'rb') as f:
                 minAct = pickle.load(f)
             minDict = makeDict(minAct)            
             plot_cdf(minDict,path=os.path.join(dir,'min_CDF'),log_x=True,x_text='Values',x_ticks=None,x_label='Values',y_label='Prob',title='Min Values',legend_loc='lower right')
         except ImportError:
             print('\n***activations for {} require CuPy***'.format(dir))
+        except OSError:
+            print('\n***file not found, using different activation set for {}***'.format(dir))
+            #subtract 100 from activation file
         except Exception as e:
             print('\n***error bulding CDFs for {}***'.format(dir))
             print(e)
-        
+
+            
         length = len(cumulative_scores)
         plt.clf()
         plt.scatter(range(length),cumulative_scores,marker='.')
