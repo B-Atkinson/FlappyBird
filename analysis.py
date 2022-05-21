@@ -170,7 +170,20 @@ def main(path):
                     elements.append('ReLu')
             elif part[:4]=='Init':
                 elements.append('{} Initialization'.format(part.split('_')[1]))
-            
+        
+        try:
+            for layer in ['W1','W2']:
+                for processed in ['raw','RMS']:
+                    with open(os.path.join(dir,'{}_{}_magnitudes.txt'.format(layer,processed)),'r') as file:
+                        gradients = file.readlines()                
+                    plt.clf()
+                    plt.plot(gradients)
+                    plt.title('{} Gradient Magnitude {} RMS'.format(layer,'Before' if processed=='raw' else 'After'))
+                    plt.savefig(os.path.join(dir,'{}_gradient_{}.png'.format(layer,'Before' if processed=='raw' else 'After')))
+        except OSError:
+            pass
+        except Exception as e:
+            print('\n\n***non-errno error:\n',e)            
             
         try:
             with open(os.path.join(dir,'stats.csv'),newline='') as csvFile:
@@ -184,11 +197,9 @@ def main(path):
                     if bestScore < score:
                         bestGame = ep
                         bestScore = score
-                print('{} done reading'.format(str(dir)))
             
         except FileNotFoundError:
-            print('\n***{} can\'t file****'.format(str(dir)))
-            continue
+            print('\n***{} can\'t find stats file***'.format(str(dir)))
 
         cumulative_scores = []
         running_rewards = []
@@ -205,7 +216,7 @@ def main(path):
                 r_sum = 0
                 
                 if running_rewards[-1] >= 4:
-                    print('file:{} test {} exceeded'.format(dir,len(running_rewards)))
+                    print('\n***file:{} test {} length disagreement***'.format(dir,len(running_rewards)))
                 if len(running_rewards)>=2 and running_rewards[-1]<running_rewards[-2]:
                     minimum = len(running_rewards)
                 if running_rewards[-1] > running_rewards[maximum]:
@@ -253,11 +264,11 @@ def main(path):
         except ImportError:
             print('\n***activations for {} require CuPy***'.format(dir))
         except OSError:
-            print('\n***file not found, using different activation set for {}***'.format(dir))
+            print('\n***optimal activation file not found, using different activation set for {}***'.format(dir))
             #subtract 100 from activation file
         except Exception as e:
             print('\n***error bulding CDFs for {}***'.format(dir))
-            print(e)
+            print(e,'\n')
 
             
         length = len(cumulative_scores)
@@ -276,22 +287,7 @@ def main(path):
         plt.savefig(os.path.join(dir,'running_reward.png'))
         plt.clf()
 
-        try:
-            for layer in ['W1','W2']:
-                for processed in ['raw','RMS']:
-                    with open(os.path.join(dir,'{}_{}_magnitudes.txt'.format(layer,processed)),'r') as file:
-                        gradients = file.readlines()                
-                    plt.clf()
-                    plt.plot(gradients)
-                    plt.title('{} Gradient Magnitude {} RMS'.format(layer,'Before' if processed=='raw' else 'After'))
-                    plt.savefig(os.path.join(dir,'{}_gradient_{}.png'.format(layer,'Before' if processed=='raw' else 'After')))
-
-        except OSError:
-            pass
-        except Exception as e:
-            print('\n\n***non-errno error:\n',e)
-
-        print('done analyzing',dir)
+        print('done analyzing',dir,flush=True)
         
         return
 
@@ -311,7 +307,7 @@ if __name__=='__main__':
     finally:
         pool.close()
         pool.join()
-        print('***all processes of {} are done***'.format(str(data)))
+        print('\n***all processes of {} are done***'.format(str(data)))
             
 
 
