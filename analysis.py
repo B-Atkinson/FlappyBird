@@ -274,6 +274,23 @@ def main(path):
         plt.xlabel('Episodes (Batch of {} games)'.format(batch))
         plt.ylabel('Running Average Score')
         plt.savefig(os.path.join(dir,'running_reward.png'))
+        plt.clf()
+
+        try:
+            for layer in ['W1','W2']:
+                for processed in ['raw','RMS']:
+                    with open(os.path.join(dir,'{}_{}_magnitudes.txt'.format(layer,processed)),'r') as file:
+                        gradients = file.readlines()                
+                    plt.clf()
+                    plt.plot(gradients)
+                    plt.title('{} Gradient Magnitude {} RMS'.format(layer,'Before' if processed=='raw' else 'After'))
+                    plt.savefig(os.path.join(dir,'{}_gradient_{}.png'.format(layer,'Before' if processed=='raw' else 'After')))
+
+        except OSError:
+            pass
+        except Exception as e:
+            print('\n\n***non-errno error:\n',e)
+
         print('done analyzing',dir)
         
         return
