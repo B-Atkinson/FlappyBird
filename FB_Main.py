@@ -408,6 +408,16 @@ while episode <= hparams.num_episodes:
             gradArrayRMS = np.array(hparams.learning_rate * g / (np.sqrt(rmsprop_cache[k]) + 1e-5)).ravel()
             magnitudes_RMS[k].append(np.sqrt(gradArrayRMS.dot(gradArrayRMS))) #capture magnitude of gradient array for both sets of weights after RMS
             grad_buffer[k] = np.zeros_like(v)  # reset batch gradient buffer
+        for layer in ['W1','W2']:
+            with open(PATH+'/{}_raw_magnitudes.txt'.format(layer),'a') as file:
+                for grad in magnitudes[layer]:
+                    file.write(str(grad)+'\n')
+            magnitudes[layer] = []
+        for layer in ['W1','W2']:
+            with open(PATH+'/{}_RMS_magnitudes.txt'.format(layer),'a') as file:
+                for grad in magnitudes_RMS[layer]:
+                    file.write(str(grad)+'\n')
+            magnitudes_RMS[layer] = []
 
             
     #Save and empty the actions and score per episode buffers every X episodes
@@ -430,16 +440,16 @@ while episode <= hparams.num_episodes:
     episode += 1
     # if episode > 100:break
 
-for k in magnitudes:
-    plt.clf()
-    plt.plot(magnitudes[k])
-    plt.title('{} Gradient Magnitude Before RMS'.format(k))
-    plt.savefig(PATH+'/{}_gradient_before.png'.format(k))
+# for k in magnitudes:
+#     plt.clf()
+#     plt.plot(magnitudes[k])
+#     plt.title('{} Gradient Magnitude Before RMS'.format(k))
+#     plt.savefig(PATH+'/{}_gradient_before.png'.format(k))
 
-for k in magnitudes_RMS:
-    plt.clf()
-    plt.plot(magnitudes_RMS[k])
-    plt.title('{} Gradient Magnitude After RMS'.format(k))
-    plt.savefig(PATH+'/{}_gradient_after.png'.format(k))
+# for k in magnitudes_RMS:
+#     plt.clf()
+#     plt.plot(magnitudes_RMS[k])
+#     plt.title('{} Gradient Magnitude After RMS'.format(k))
+#     plt.savefig(PATH+'/{}_gradient_after.png'.format(k))
 print('training completed',flush=True)
 #### End Training-----------------------------------------------------------------
