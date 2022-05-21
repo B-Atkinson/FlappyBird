@@ -55,10 +55,15 @@ def findMaxModel(dir):
         best = lines[1].split(',')[0].split(':')[1]
         bestPath = os.path.join(dir,'pickles/'+best+'.p')
         print('path to best model:',str(bestPath))
-        if not os.path.exists(bestPath):
+        try:
+            with open(bestPath,'r') as f:
+                pass
+        except OSError:
             #if the exact model is not available, choose the next highest saved point without going over
             print('\n***True best model unavailable, choosing closest option.***\n\n')
             best = max(floor( int(best) / 100 ) * 100,1)   
+            if not(best%200==0):
+                best-=100
     #will throw an exception if the digest file does not exist, fail early
     return str(best)
     
@@ -84,6 +89,8 @@ def loadWorstModel(dir):
             #if the exact model is not available, choose the next highest saved point without going over
             print('\n***True worst model unavailable, choosing closest option.***\n\n')
             worst = max(floor( int(worst) / 100 ) * 100,1)   
+            if not(worst%200==0):
+                worst-=100
     #will throw an exception if the digest file does not exist, fail early
     file = os.path.join(dir,'pickles/'+str(worst)+'.p')
     model  = pickle.load(open(file,'rb'))
