@@ -260,7 +260,21 @@ def main(path):
             with open(os.path.join(dir,'activations/{}.p'.format(minP)),'rb') as f:
                 minAct = pickle.load(f)
             minDict = makeDict(minAct)            
-            plot_cdf(minDict,path=os.path.join(dir,'min_CDF'),log_x=True,x_text='Values',x_ticks=None,x_label='Values',y_label='Prob',title='Min Values',legend_loc='lower right')
+            plot_cdf(minDict,path=os.path.join(dir,'init_CDF'),log_x=True,x_text='Values',x_ticks=None,x_label='Values',y_label='Prob',title='Min Values',legend_loc='lower right')
+        except ImportError:
+            print('\n***activations for {} require CuPy***'.format(dir))
+        except OSError:
+            print('\n***optimal activation file not found, using different activation set for {}***'.format(dir))
+            #subtract 100 from activation file
+        except Exception as e:
+            print('\n***error bulding CDFs for {}***'.format(dir))
+            print(e,'\n')
+
+        try:
+            with open(os.path.join(dir,'activations/{}.p'.format(200)),'rb') as f:
+                initAct = pickle.load(f)
+            initDict = makeDict(initAct)            
+            plot_cdf(initDict,path=os.path.join(dir,'init_CDF'),log_x=True,x_text='Values',x_ticks=None,x_label='Values',y_label='Prob',title='Initial Values',legend_loc='lower right')
         except ImportError:
             print('\n***activations for {} require CuPy***'.format(dir))
         except OSError:
