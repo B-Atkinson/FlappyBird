@@ -137,5 +137,5 @@ no_ht-*/**
 *.txt
 
 #ignoring shell scripts because you don't need to save every copy of a shell script
-*.sh
+**/*.sh
 **/scores.py
