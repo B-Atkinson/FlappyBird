@@ -177,7 +177,7 @@ def main(path):
                     with open(os.path.join(dir,'{}_{}_magnitudes.txt'.format(layer,processed)),'r') as file:
                         gradients = file.readlines()                
                     plt.clf()
-                    plt.plot(gradients)
+                    plt.plot(np.asarray(gradients,float))
                     plt.title('{} Gradient Magnitude {} RMS'.format(layer,'Before' if processed=='raw' else 'After'))
                     plt.savefig(os.path.join(dir,'{}_gradient_{}.png'.format(layer,'Before' if processed=='raw' else 'After')))
         except OSError:

@@ -406,7 +406,7 @@ if __name__== '__main__':
             print('***all processes of {} are done***')
     else:
         #create an input and model saliency map for each loaded frame
-        for i in range(0,len(framelist),10):
+        for i in range(0,len(framelist),params.interval):
             print('\n\n*********frame {}**********'.format(i),flush=True)
             plt.close()
             try:
