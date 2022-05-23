@@ -50,8 +50,9 @@ def make_argparser():
                         help="rate of decay for RMSprop")
     parser.add_argument('--batch_size', type=int, default=10,
                         help="number of episodes to conduct rmsprop parameter updates over")
-    parser.add_argument('--normalize', type=str2bool, default=False,
-                        help='if True, the network values get normalized each time they are recalculated')
+    parser.add_argument('--L2', type=str2bool, default=False,
+                        help='if True, L2 normalization is used on gradients')
+    parser.add_argument('--L2Constant', type=float, default=.00001)                    
     parser.add_argument('--pipe_reward', type=float, default=1.0)
     parser.add_argument('--loss_reward', type=float, default=-5.0)
     parser.add_argument('--flip_heuristic', type=str2bool, default=False,
