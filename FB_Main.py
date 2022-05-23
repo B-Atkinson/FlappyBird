@@ -106,10 +106,10 @@ def policy_forward(hparams, screen_input, model):
     if hparams.bias:
         int_h+=bias
     
-    if hparams.normalize:
-        mean = np.mean(int_h)
-        variance = np.mean((int_h - mean) ** 2)
-        int_h = (int_h - mean) * 1.0 / np.sqrt(variance + 1e-5)
+    # if hparams.normalize:
+    #     mean = np.mean(int_h)
+    #     variance = np.mean((int_h - mean) ** 2)
+    #     int_h = (int_h - mean) * 1.0 / np.sqrt(variance + 1e-5)
     
     if hparams.leaky:
         # # Leaky ReLU 
@@ -401,6 +401,11 @@ while episode <= hparams.num_episodes:
         w1_before = model['W1']
         for k, v in model.items():
             gradArray = np.array(grad_buffer[k]).ravel()
+
+            if hparams.L2:
+                print('grad array',np.shape(gradArray))
+                gradArray += 2*hparams.L2Constant*model[k].ravel() #implement L2 Normalization
+
             magnitudes[k].append(np.sqrt(gradArray.dot(gradArray))) #capture magnitude of gradient array for both sets of weights before RMS
             g = grad_buffer[k]  # gradient
             rmsprop_cache[k] = hparams.decay_rate * rmsprop_cache[k] + (1 - hparams.decay_rate) * g ** 2
@@ -408,6 +413,7 @@ while episode <= hparams.num_episodes:
             gradArrayRMS = np.array(hparams.learning_rate * g / (np.sqrt(rmsprop_cache[k]) + 1e-5)).ravel()
             magnitudes_RMS[k].append(np.sqrt(gradArrayRMS.dot(gradArrayRMS))) #capture magnitude of gradient array for both sets of weights after RMS
             grad_buffer[k] = np.zeros_like(v)  # reset batch gradient buffer
+            
         for layer in ['W1','W2']:
             with open(PATH+'/{}_raw_magnitudes.txt'.format(layer),'a') as file:
                 for grad in magnitudes[layer]:
