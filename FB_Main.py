@@ -55,14 +55,18 @@ REWARDDICT = {"positive":hparams.pipe_reward, "loss":hparams.loss_reward}
 
 #### Folders, files, metadata start------------------------------------------------------
 #define filepath for saving results
-if hparams.human:
-    PATH = hparams.output_dir + "/ht" + "-S" + str(hparams.seed) + "-Gap" +str(hparams.gap_size)\
-        +"-Hyb"+str(hparams.percent_hybrid) +"-Leaky_"+str(hparams.leaky)+\
-            "-Init_"+str(hparams.init)
+if hparams.L2:
+    L2C = '-L2C'+str(hparams.L2Constant)
 else:
-    PATH = hparams.output_dir + "/no_ht" + "-S" + str(hparams.seed) + "-Gap" +str(hparams.gap_size)\
+    L2C = ''
+if hparams.human:
+    PATH = hparams.output_dir + "/ht" + "-S" + str(hparams.seed) \
         +"-Hyb"+str(hparams.percent_hybrid) +"-Leaky_"+str(hparams.leaky)+\
-            "-Init_"+str(hparams.init)
+            "-Init_"+str(hparams.init)+"-L2_"+str(hparams.L2)+L2C
+else:
+    PATH = hparams.output_dir + "/no_ht" + "-S" + str(hparams.seed) \
+        +"-Hyb"+str(hparams.percent_hybrid) +"-Leaky_"+str(hparams.leaky)+\
+            "-Init_"+str(hparams.init)+"-L2_"+str(hparams.L2)+L2C
 
 try:
     os.makedirs(os.path.dirname(PATH),exist_ok=False)
