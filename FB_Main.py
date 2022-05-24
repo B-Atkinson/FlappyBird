@@ -107,23 +107,15 @@ def policy_forward(hparams, screen_input, model):
     """Uses screen_input to find the intermediate hidden state values along
     with the probability of taking action 2 (int_h and p respectively)"""
     int_h = np.dot(model['W1'], screen_input)
-    if hparams.bias:
-        int_h+=bias
-    
-    # if hparams.normalize:
-    #     mean = np.mean(int_h)
-    #     variance = np.mean((int_h - mean) ** 2)
-    #     int_h = (int_h - mean) * 1.0 / np.sqrt(variance + 1e-5)
     
     if hparams.leaky:
-        # # Leaky ReLU 
+        # Leaky ReLU 
         int_h[int_h < 0] *= .01
     else:
         # ReLU nonlinearity used to get hidden layer state
         int_h[int_h < 0] = 0      
         
     logp = np.dot(model['W2'], int_h)
-    
     #probability of moving the agent up
     p = sigmoid(logp)
     return p, int_h  
