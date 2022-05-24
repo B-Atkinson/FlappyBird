@@ -153,23 +153,60 @@ def main(path):
         print('opening:',dir)
         eps=[]
         raw_scores=[]
-        trainer='No Human Heuristic'
-        elements = [trainer]
-        parts = experiment.split('-')
-        for part in parts:
-            if part[0]=='S':
-                elements.append('Seed={}'.format(part[1:]))
-            if part=='ht':
-                elements[0]='Human Heuristic'
-            elif part[:3]=='Hyb':
-                elements.append('{}% Hybrid Frame\n'.format(float(part[3:])*100))
-            elif 'Leaky' in part:
-                if part.split('_')[1] == 'True':
-                    elements.append('Leaky ReLu')
-                else:
-                    elements.append('ReLu')
-            elif part[:4]=='Init':
-                elements.append('{} Initialization'.format(part.split('_')[1]))
+        # trainer='No Human Heuristic'
+        # elements = [trainer]
+        # parts = experiment.split('-')
+        # for part in parts:
+        #     if part[0]=='S':
+        #         elements.append('Seed={}'.format(part[1:]))
+        #     if part=='ht':
+        #         elements[0]='Human Heuristic'
+        #     elif part[:3]=='Hyb':
+        #         elements.append('{}% Hybrid Frame\n'.format(float(part[3:])*100))
+        #     elif 'Leaky' in part:
+        #         if part.split('_')[1] == 'True':
+        #             elements.append('Leaky ReLu')
+        #         else:
+        #             elements.append('ReLu')
+        #     elif part[:4]=='Init':
+        #         elements.append('{} Initialization'.format(part.split('_')[1]))
+
+        keyDict = {"seed":'Seed',
+           "L2":'L2 Normalized',
+           "L2Constant":'L2 Constant',
+           "init":'Initialization',
+           "leaky":'Activation',
+           "percent_hybrid":'% Difference',
+           "human":'Human Agent'
+           }
+        expDict = {}
+        with open(os.path.join(dir,'metadata.txt'),'r') as fd:
+            lines = fd.readlines()[1:-1]
+        
+        for line in lines:
+            parts = line.split(':')
+            rawKey=parts[0][3:-1]
+            if rawKey in keyDict.keys():
+                key = keyDict[rawKey]
+                value = parts[1].split(',')[0][1:]
+                value = value.lstrip('"')
+                value = value.strip('"')
+                expDict[key] = value
+
+        if expDict['Activation']=='false':
+            expDict.pop('Activation')
+        if expDict['L2 Normalized']=='false':
+            expDict.pop('L2 Normalized')
+
+        title = ''
+        items = 1
+        for k in expDict.keys():
+            title += k+':'+expDict[k]
+            if items % 3 ==0:
+                title += '\n'
+            else:
+                title += ' '
+            items += 1
         
         try:
             for layer in ['W1','W2']:
@@ -312,14 +349,14 @@ def main(path):
         length = len(cumulative_scores)
         plt.clf()
         plt.scatter(range(length),cumulative_scores,marker='.')
-        plt.title('Episode Scores ({})'.format(', '.join(elements)))
+        plt.title('Episode Scores ({})'.format(title))
         plt.xlabel('Episodes (Batch of {} games)'.format(batch))
         plt.ylabel('Number of pipes')
         plt.savefig(os.path.join(dir,'num_pipes.png'))
         plt.clf()
 
         plt.scatter(range(length),running_rewards,marker='.')
-        plt.title('Running Reward ({})'.format(', '.join(elements)))
+        plt.title('Running Reward ({})'.format(title))
         plt.xlabel('Episodes (Batch of {} games)'.format(batch))
         plt.ylabel('Running Average Score')
         plt.savefig(os.path.join(dir,'running_reward.png'))
