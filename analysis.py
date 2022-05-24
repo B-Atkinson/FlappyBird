@@ -12,7 +12,7 @@ import numpy as np
 import multiprocessing as mp
 import os
 import argparse
-import cupy as cp
+# import cupy as cp
 
 def make_argparser():
     parser = argparse.ArgumentParser(description='Arguments to run analysis for FlappyBird reinforcement learning with human influence.')    
