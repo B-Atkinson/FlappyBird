@@ -233,42 +233,66 @@ def main(path):
         if (maximum*20)%100==0:
             maxP = maximum*20
         else:
-            maxP = int(math.floor(maximum*20/100)*100)
-        
+            maxP = int(math.floor(maximum*20/100)*100)        
         if minimum*20%100==0:
             minP = minimum*20 
         else:
             minP =  int(math.floor(minimum*20/100)*100)
-        try:
-            #plot max and min CDFs
-            with open(os.path.join(dir,'activations/{}.p'.format(maxP)),'rb') as f:
-                maxAct = pickle.load(f)
-            # if isinstance(maxAct,np.ndarray):
-            #     maxAct = maxAct.get()
-            maxDict = makeDict(maxAct)
-            plot_cdf(maxDict,path=os.path.join(dir,'max_CDF'),x_text='Values',log_x=True,x_ticks=None,x_label='Values',y_label='Prob',title='Max Values',legend_loc='lower right')
-        except ImportError:
-            print('\n***activations for {} require CuPy***'.format(dir))
-        except OSError:
-            print('\n***file not found, using different activation set for {}***'.format(dir))
-            #subtract 100 from activation file
-        except Exception as e:
-            print('\n***error bulding CDFs for {}***'.format(dir))
-            print(e)
 
-        try:
-            with open(os.path.join(dir,'activations/{}.p'.format(minP)),'rb') as f:
-                minAct = pickle.load(f)
-            minDict = makeDict(minAct)            
-            plot_cdf(minDict,path=os.path.join(dir,'init_CDF'),log_x=True,x_text='Values',x_ticks=None,x_label='Values',y_label='Prob',title='Min Values',legend_loc='lower right')
-        except ImportError:
-            print('\n***activations for {} require CuPy***'.format(dir))
-        except OSError:
-            print('\n***optimal activation file not found, using different activation set for {}***'.format(dir))
-            #subtract 100 from activation file
-        except Exception as e:
-            print('\n***error bulding CDFs for {}***'.format(dir))
-            print(e,'\n')
+        needMaxActivation,loops = True,1
+        while needMaxActivation and loops<5:
+            try:
+                #plot max and min CDFs
+                with open(os.path.join(dir,'activations/{}.p'.format(maxP)),'rb') as f:
+                    maxAct = pickle.load(f)
+                # if isinstance(maxAct,np.ndarray):
+                #     maxAct = maxAct.get()
+                maxDict = makeDict(maxAct)
+                plot_cdf(maxDict,path=os.path.join(dir,'max_CDF'),x_text='Values',log_x=True,x_ticks=None,x_label='Values',y_label='Prob',title='Max Values',legend_loc='lower right')
+                needMaxActivation = False
+            except ImportError:
+                print('\n***activations for {} require CuPy***'.format(dir))
+                needMaxActivation = False
+            except OSError:
+                if maxP%100!=0:
+                    maxP = int(math.floor(maxP/100)*100)
+                elif maxP%200!=0:
+                    maxP -= 100
+                else:
+                    pass
+            except Exception as e:
+                print('\n***error bulding CDFs for {}***'.format(dir))
+                print(e)
+                needMaxActivation = False
+            finally:
+                loops += 1
+        if needMaxActivation:
+            print('\n***file not found, no activation set for {}***'.format(dir))
+        
+        needMinActivation,loops = True,1
+        while needMinActivation and loops<5:
+            try:
+                with open(os.path.join(dir,'activations/{}.p'.format(minP)),'rb') as f:
+                    minAct = pickle.load(f)
+                minDict = makeDict(minAct)            
+                plot_cdf(minDict,path=os.path.join(dir,'init_CDF'),log_x=True,x_text='Values',x_ticks=None,x_label='Values',y_label='Prob',title='Min Values',legend_loc='lower right')
+                needMinActivation = False
+            except ImportError:
+                print('\n***activations for {} require CuPy***'.format(dir))
+                needMinActivation = False
+            except OSError:
+                if minP%100!=0:
+                    minP = int(math.floor(minP/100)*100)
+                elif minP%200!=0:
+                    minP -= 100
+                else:
+                    pass
+            except Exception as e:
+                print('\n***error bulding CDFs for {}***'.format(dir))
+                print(e,'\n')
+                needMinActivation = False
+        if needMinActivation:
+            print('\n***file not found, no activation set for {}***'.format(dir))
 
         try:
             with open(os.path.join(dir,'activations/{}.p'.format(200)),'rb') as f:
