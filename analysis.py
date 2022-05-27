@@ -312,7 +312,7 @@ def main(path):
                 with open(os.path.join(dir,'activations/{}.p'.format(minP)),'rb') as f:
                     minAct = pickle.load(f)
                 minDict = makeDict(minAct)            
-                plot_cdf(minDict,path=os.path.join(dir,'init_CDF'),log_x=True,x_text='Values',x_ticks=None,x_label='Values',y_label='Prob',title='Min Values',legend_loc='lower right')
+                plot_cdf(minDict,path=os.path.join(dir,'min_CDF'),log_x=True,x_text='Values',x_ticks=None,x_label='Values',y_label='Prob',title='Min Values',legend_loc='lower right')
                 needMinActivation = False
             except ImportError:
                 print('\n***activations for {} require CuPy***'.format(dir))
