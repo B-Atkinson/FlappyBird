@@ -289,7 +289,7 @@ def main(path):
                 needMaxActivation = False
             except ImportError:
                 print('\n***activations for {} require CuPy***'.format(dir))
-                needMaxActivation = False
+                break
             except OSError:
                 if maxP%100!=0:
                     maxP = int(math.floor(maxP/100)*100)
@@ -300,7 +300,6 @@ def main(path):
             except Exception as e:
                 print('\n***error bulding CDFs for {}***'.format(dir))
                 print(e)
-                needMaxActivation = False
             finally:
                 loops += 1
         if needMaxActivation:
@@ -316,7 +315,7 @@ def main(path):
                 needMinActivation = False
             except ImportError:
                 print('\n***activations for {} require CuPy***'.format(dir))
-                needMinActivation = False
+                break
             except OSError:
                 if minP%100!=0:
                     minP = int(math.floor(minP/100)*100)
@@ -327,7 +326,6 @@ def main(path):
             except Exception as e:
                 print('\n***error bulding CDFs for {}***'.format(dir))
                 print(e,'\n')
-                needMinActivation = False
         if needMinActivation:
             print('\n***file not found, no activation set for {}***'.format(dir))
 
