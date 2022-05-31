@@ -8,6 +8,7 @@
 . /etc/profile
 module load lang/miniconda3
 source activate py38
+echo "">saliency_$JOB.txt
 
 python saliency.py \
 --dir=$TARGET \
