@@ -1,5 +1,5 @@
 #!/bin/bash
-OUTPUT=/home/brian.atkinson/thesis/data/noGPU/weight_inits
+OUTPUT=/home/brian.atkinson/thesis/data/Projection_Heuristic
 echo -e "iterating through:\n$OUTPUT\n"
 start=/home/brian.atkinson/thesis/FlappyBird
 cd $OUTPUT
