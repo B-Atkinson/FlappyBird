@@ -12,7 +12,7 @@ import numpy as np
 import multiprocessing as mp
 import os
 import argparse
-# import cupy as cp
+import cupy as cp
 
 def make_argparser():
     parser = argparse.ArgumentParser(description='Arguments to run analysis for FlappyBird reinforcement learning with human influence.')    
@@ -277,18 +277,19 @@ def main(path):
             minP =  int(math.floor(minimum*20/100)*100)
 
         needMaxActivation,loops = True,1
+        dummy=False
         while needMaxActivation and loops<5:
             try:
                 #plot max and min CDFs
                 with open(os.path.join(dir,'activations/{}.p'.format(maxP)),'rb') as f:
                     maxAct = pickle.load(f)
-                # if isinstance(maxAct,np.ndarray):
-                #     maxAct = maxAct.get()
                 maxDict = makeDict(maxAct)
                 plot_cdf(maxDict,path=os.path.join(dir,'max_CDF'),x_text='Values',log_x=True,x_ticks=None,x_label='Values',y_label='Prob',title='Max Values',legend_loc='lower right')
                 needMaxActivation = False
+                if dummy:
+                    print('fixed the loading issue',flush=True)
             except ImportError:
-                print('\n***activations for {} require CuPy***'.format(dir))
+                print('\n***activations for {} require CuPy***'.format(dir),flush=True)
                 break
             except OSError:
                 if maxP%100!=0:
@@ -298,12 +299,14 @@ def main(path):
                 else:
                     pass
             except Exception as e:
-                print('\n***error bulding CDFs for {}***'.format(dir))
-                print(e)
+                print('\n***error bulding upper CDFs for {}***'.format(dir))
+                print(e,flush=True)
+                maxAct = maxAct.get()
+                dummy = True
             finally:
                 loops += 1
         if needMaxActivation:
-            print('\n***file not found, no activation set for {}***'.format(dir))
+            print('\n***file not found, no activation set for {}***'.format(dir),flush=True)
         
         needMinActivation,loops = True,1
         while needMinActivation and loops<5:
