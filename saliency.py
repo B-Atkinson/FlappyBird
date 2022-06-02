@@ -137,6 +137,7 @@ def policy_forward_GPU(screen_input, model,leaky):
     with the probability of taking action 2 (int_h and p respectively). Uses CuPy
     to achieve GPU acceleration. Returns the probability of the agent flapping, as well 
     as the hidden node activations."""
+    print(cp.shape(model['W1']),cp.shape(screen_input))
     int_h = cp.dot(model['W1'], screen_input)
     if leaky:
         # # Leaky ReLU 

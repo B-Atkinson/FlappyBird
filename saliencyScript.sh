@@ -8,12 +8,11 @@
 . /etc/profile
 module load lang/miniconda3
 source activate py38
-echo "">saliency_$JOB.txt
 
 python saliency.py \
 --dir=$TARGET \
 --leaky=false \
---GPU=false  \
+--GPU=true  \
 --num_processors=1 \
 --mp=false \
 --interval=$INTERVAL

@@ -1,5 +1,5 @@
 #!/bin/bash
-OUTPUT=/home/brian.atkinson/thesis/data/noGPU/activation_func
+OUTPUT=/home/brian.atkinson/thesis/data/Orig_Heuristic
 echo -e "iterating through:\n$OUTPUT\n"
 start=/home/brian.atkinson/thesis/FlappyBird
 cd $OUTPUT
@@ -12,7 +12,7 @@ do
     cd $start
     sbatch --job-name=$JOB\
     --export=ALL,TARGET=$path,JOB=$JOB,INTERVAL=20 \
-    --output=/home/brian.atkinson/thesis/FlappyBird/text_files/proj_saliency_ORIG_$JOB.txt \
+    --output=/home/brian.atkinson/thesis/FlappyBird/text_files/orig_saliency_$JOB.txt \
     /home/brian.atkinson/thesis/FlappyBird/saliencyScript.sh
     let JOB=JOB+1
     cd $OUTPUT
