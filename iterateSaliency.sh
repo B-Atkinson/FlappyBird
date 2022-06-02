@@ -1,5 +1,5 @@
 #!/bin/bash
-OUTPUT=/home/brian.atkinson/thesis/data/Orig_Heuristic
+OUTPUT=/home/brian.atkinson/thesis/data/LrgGap
 echo -e "iterating through:\n$OUTPUT\n"
 start=/home/brian.atkinson/thesis/FlappyBird
 cd $OUTPUT
