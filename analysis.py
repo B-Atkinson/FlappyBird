@@ -148,48 +148,57 @@ def main(path):
     batch = 20
     tests = [dataDir]    
 
-    for dir in tests:    
-        experiment = os.path.split(dir)[1]
-        print('opening:',dir)
-        eps=[]
-        raw_scores=[]
+    for dir in tests:  
+        sum = 0
+        try:  
+            experiment = os.path.split(dir)[1]
+            print('opening:',dir)
+            eps=[]
+            raw_scores=[]
+            sum+=1#1
 
-        keyDict = {"seed":'Seed',
-           "L2":'L2 Normalized',
-           "L2Constant":'L2 Constant',
-           "init":'Initialization',
-           "leaky":'Activation',
-           "percent_hybrid":'% Difference',
-           "human":'Human Agent'
-           }
-        expDict = {}
-        with open(os.path.join(dir,'metadata.txt'),'r') as fd:
-            lines = fd.readlines()[1:-1]
-        
-        for line in lines:
-            parts = line.split(':')
-            rawKey=parts[0][3:-1]
-            if rawKey in keyDict.keys():
-                key = keyDict[rawKey]
-                value = parts[1].split(',')[0][1:]
-                value = value.lstrip('"')
-                value = value.strip('"')
-                expDict[key] = value
+            keyDict = {"seed":'Seed',
+            "L2":'L2 Normalized',
+            "L2Constant":'L2 Constant',
+            "init":'Initialization',
+            "leaky":'Activation',
+            "percent_hybrid":'% Difference',
+            "human":'Human Agent'
+            }
+            expDict = {}
+            with open(os.path.join(dir,'metadata.txt'),'r') as fd:
+                lines = fd.readlines()[1:-1]
+            sum += 1 #2
+            
+            for line in lines:
+                parts = line.split(':')
+                rawKey=parts[0][3:-1]
+                if rawKey in keyDict.keys():
+                    key = keyDict[rawKey]
+                    value = parts[1].split(',')[0][1:]
+                    value = value.lstrip('"')
+                    value = value.strip('"')
+                    expDict[key] = value
+            sum+=1 #3
 
-        if expDict['Activation']=='false':
-            expDict.pop('Activation')
-        if expDict['L2 Normalized']=='false':
-            expDict.pop('L2 Normalized')
+            if ('Activation' in expDict.keys()) and expDict['Activation']=='false':
+                expDict.pop('Activation')
+            if ('L2 Normalized' in expDict.keys()) and expDict['L2 Normalized']=='false':
+                    expDict.pop('L2 Normalized')
+            sum+=1#4
 
-        title = ''
-        items = 1
-        for k in expDict.keys():
-            title += k+':'+expDict[k]
-            if items % 3 ==0:
-                title += '\n'
-            else:
-                title += ' '
-            items += 1
+            title = ''
+            items = 1
+            for k in expDict.keys():
+                title += k+':'+expDict[k]
+                if items % 3 ==0:
+                    title += '\n'
+                else:
+                    title += ' '
+                items += 1
+            sum+=1#5
+        except Exception as e:
+            print('\n*** {} caught error {}***\n'.format(dir,sum),flush=True)
         
         try:
             for layer in ['W1','W2']:
@@ -201,9 +210,9 @@ def main(path):
                     plt.title('{} Gradient Magnitude {} RMS'.format(layer,'Before' if processed=='raw' else 'After'))
                     plt.savefig(os.path.join(dir,'{}_gradient_{}.png'.format(layer,'Before' if processed=='raw' else 'After')))
         except OSError:
-            pass
+            print('\n\n***{} gradient errno error:\n'.format(dir),flush=True)
         except:
-            print('\n\n***non-errno error:\n')            
+            print('\n\n***{} gradient non-errno error:\n'.format(dir),flush=True)            
             
         try:
             with open(os.path.join(dir,'stats.csv'),newline='') as csvFile:
@@ -219,7 +228,7 @@ def main(path):
                         bestScore = score
             
         except:
-            print('\n***{} can\'t find stats file***'.format(str(dir)))
+            print('\n***{} can\'t find stats file***'.format(str(dir)),flush=True)
 
         cumulative_scores = []
         running_rewards = []
