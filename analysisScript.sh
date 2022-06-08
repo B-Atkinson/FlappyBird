@@ -12,4 +12,4 @@ module load lang/miniconda3
 source activate py38
 
 python analysis.py \
---rootDirectory=/home/brian.atkinson/thesis/data
+--rootDirectory=/home/brian.atkinson/thesis/data/noGPU

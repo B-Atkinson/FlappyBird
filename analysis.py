@@ -12,7 +12,7 @@ import numpy as np
 import multiprocessing as mp
 import os
 import argparse
-import cupy as cp
+# import cupy as cp
 
 def make_argparser():
     parser = argparse.ArgumentParser(description='Arguments to run analysis for FlappyBird reinforcement learning with human influence.')    
@@ -153,23 +153,6 @@ def main(path):
         print('opening:',dir)
         eps=[]
         raw_scores=[]
-        # trainer='No Human Heuristic'
-        # elements = [trainer]
-        # parts = experiment.split('-')
-        # for part in parts:
-        #     if part[0]=='S':
-        #         elements.append('Seed={}'.format(part[1:]))
-        #     if part=='ht':
-        #         elements[0]='Human Heuristic'
-        #     elif part[:3]=='Hyb':
-        #         elements.append('{}% Hybrid Frame\n'.format(float(part[3:])*100))
-        #     elif 'Leaky' in part:
-        #         if part.split('_')[1] == 'True':
-        #             elements.append('Leaky ReLu')
-        #         else:
-        #             elements.append('ReLu')
-        #     elif part[:4]=='Init':
-        #         elements.append('{} Initialization'.format(part.split('_')[1]))
 
         keyDict = {"seed":'Seed',
            "L2":'L2 Normalized',
@@ -219,8 +202,8 @@ def main(path):
                     plt.savefig(os.path.join(dir,'{}_gradient_{}.png'.format(layer,'Before' if processed=='raw' else 'After')))
         except OSError:
             pass
-        except Exception as e:
-            print('\n\n***non-errno error:\n',e)            
+        except:
+            print('\n\n***non-errno error:\n')            
             
         try:
             with open(os.path.join(dir,'stats.csv'),newline='') as csvFile:
@@ -235,7 +218,7 @@ def main(path):
                         bestGame = ep
                         bestScore = score
             
-        except FileNotFoundError:
+        except:
             print('\n***{} can\'t find stats file***'.format(str(dir)))
 
         cumulative_scores = []
@@ -243,6 +226,8 @@ def main(path):
         r_sum = 0   
         running_reward = 0
         maximum = 0 
+        checkpoints = {}
+
         for e in range(len(eps)):
             
             if e % batch == 0:
@@ -258,13 +243,20 @@ def main(path):
                     minimum = len(running_rewards)
                 if running_rewards[-1] > running_rewards[maximum]:
                     maximum = len(running_rewards)
+
+            if (e % 5000 == 0):
+                checkpoints[e] = running_reward
+
             r_sum += raw_scores[e]
         
         with open(os.path.join(dir,'digest.txt'),'w') as f:
             f.write('directory:{}\n'.format(experiment))
             f.write('best game:{}, best score:{}\n'.format(bestGame,bestScore))
-            f.write('max score at epoch:{}, game:{}\n'.format(maximum,maximum*20))
-            f.write('min score at epoch:{}, game:{}'.format(minimum, minimum*20))
+            f.write('max score at epoch:{}, game:{}, reward:{}\n'.format(maximum,maximum*20,running_rewards[maximum]))
+            f.write('min score at epoch:{}, game:{}\n\n'.format(minimum, minimum*20))
+            f.write('running reward checkpoints\n')
+            for k in checkpoints:
+                f.write('{}:{}\n'.format(k,checkpoints[k]))
 
         #determine which pickles to load
         if (maximum*20)%100==0:
