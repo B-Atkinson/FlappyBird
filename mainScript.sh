@@ -9,14 +9,14 @@ module load lang/miniconda3
 source activate py38
 
 python FB_Main.py \
---num_episodes=100000 \
+--num_episodes=200000 \
 --seed=$SEED \
 --loss_reward=-5 \
 --save_stats=200 \
 --gamma=0.99 \
 --learning_rate=0.0001 \
---decay_rate=0.99 \
---batch_size=5 \
+--decay_rate=0 \
+--batch_size=200 \
 --human=$HUMAN \
 --percent_hybrid=1 \
 --L2=$L2 \

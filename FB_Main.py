@@ -203,41 +203,6 @@ def processScreen(obs):
                 obs[i,j] = 1
     return obs.astype(float).ravel()
 
-def reloadEnvironment(game, FB, rng, hparams, numEpisodes, path):
-    '''Replays recorded series of moves through the environment, agent, and random number generator in order to have the 
-    randomly-derived values be in the same state that they were when the previous training session ended. The result is 
-    to have both individual training sessions have the exact same output as one unbroken session of the same total number 
-    of episodes (i.e. 2 sessions of 1,000 episodes produce the same result as a sinlge 2,000 episode session.
-    
-    Inputs:
-    game- a fresh instantiation of the PLE object
-    FB- a fresh instantiation of the FlappyBird game object
-    rng- a fresh instantiation of the numpy random number generator
-    hparams- the parameters object from the previous training session
-    numEpisodes- the number of episodes to replay moves through (should be the number in the name of the loaded pickle file)
-    
-    Outputs:
-    game- the PLE environment object as it was at the end of the loaded training session
-    FB- the FlappyBird game object as it was at the end of the loaded training session
-    rng- the numpy random number generator as it was at the end of the loaded training session
-    '''
-    with open(path+'/'+'moves.csv',newline='') as csvFile:
-        reader = csv.reader(csvFile, delimiter=',')
-        epNum = 1
-        for episode in reader:
-            game.reset_game()
-            FB.resetPipes()   
-            FB.init()            
-            for move in episode:
-                rng.uniform()
-                if move == '1':
-                    game.act(ACTION_MAP['flap'])
-                else:
-                    game.act(ACTION_MAP['noop'])
-            epNum += 1
-            if epNum == numEpisodes:
-                break            
-    return game, FB, rng
 #### End Function Definitions-----------------------------------------------------
 
 
@@ -306,12 +271,12 @@ best_score = -1
 
 #regular training loop
 while episode <= hparams.num_episodes:
-    if (episode > 1) and (episode-1) % 1000 == 0:
-        pipeSeed += 5
-        rngSeed += 5
-        FLAPPYBIRD = FlappyBird(pipe_gap=GAP, rngSeed=rngSeed, pipeSeed=pipeSeed)
-        game = PLE(FLAPPYBIRD, display_screen=False, force_fps=True, rng=rngSeed, reward_values=REWARDDICT)
-        game.init()
+    # if (episode > 1) and (episode-1) % 1000 == 0:
+    #     pipeSeed += 5
+    #     rngSeed += 5
+    #     FLAPPYBIRD = FlappyBird(pipe_gap=GAP, rngSeed=rngSeed, pipeSeed=pipeSeed)
+    #     game = PLE(FLAPPYBIRD, display_screen=False, force_fps=True, rng=rngSeed, reward_values=REWARDDICT)
+    #     game.init()
     #reset the pygame object and pipe group list to have the same set of pipes each episode to begin the episode
     game.reset_game()
     FLAPPYBIRD.resetPipes()   
