@@ -235,7 +235,9 @@ def main(path):
         r_sum = 0   
         running_reward = 0
         maximum = 0 
-        checkpoints = {}
+        checkpoints = []
+        splits = 1000*((len(eps) // 10) // 1000)
+        points = []
 
         for e in range(len(eps)):
             
@@ -253,8 +255,10 @@ def main(path):
                 if running_rewards[-1] > running_rewards[maximum]:
                     maximum = len(running_rewards)
 
-            if (e % 5000 == 0):
-                checkpoints[e] = running_reward
+            if (e % splits == 0):
+                checkpoints.append(running_reward)
+                points.append(e)
+
 
             r_sum += raw_scores[e]
         
@@ -264,8 +268,12 @@ def main(path):
             f.write('max score at epoch:{}, game:{}, reward:{}\n'.format(maximum,maximum*20,running_rewards[maximum]))
             f.write('min score at epoch:{}, game:{}\n\n'.format(minimum, minimum*20))
             f.write('running reward checkpoints\n')
-            for k in checkpoints:
-                f.write('{}:{}\n'.format(k,checkpoints[k]))
+            
+            for e in points:
+                f.write('{} & '.format(e))
+            f.write('\n')
+            for rr in checkpoints:
+                f.write('{:.5f} & '.format(rr))
 
         #determine which pickles to load
         if (maximum*20)%100==0:
