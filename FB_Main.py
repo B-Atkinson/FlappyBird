@@ -370,7 +370,7 @@ while episode <= hparams.num_episodes:
             g = grad_buffer[k]  # gradient
             rmsprop_cache[k] = hparams.decay_rate * rmsprop_cache[k] + (1 - hparams.decay_rate) * g ** 2
             model[k] += hparams.learning_rate * g / (np.sqrt(rmsprop_cache[k]) + 1e-5)
-            gradArrayRMS = np.array(hparams.learning_rate * g / (np.sqrt(rmsprop_cache[k]) + 1e-5)).ravel()
+            gradArrayRMS = np.array(hparams.learning_rate * g ).ravel()
             magnitudes_RMS[k].append(np.sqrt(gradArrayRMS.dot(gradArrayRMS))) #capture magnitude of gradient array for both sets of weights after RMS
             grad_buffer[k] = np.zeros_like(v)  # reset batch gradient buffer
             

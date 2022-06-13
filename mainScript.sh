@@ -15,7 +15,7 @@ python FB_Main.py \
 --save_stats=200 \
 --gamma=0.99 \
 --learning_rate=0.0001 \
---decay_rate=0 \
+--decay_rate=.99 \
 --batch_size=200 \
 --human=$HUMAN \
 --percent_hybrid=1 \
