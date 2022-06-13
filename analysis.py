@@ -12,7 +12,7 @@ import numpy as np
 import multiprocessing as mp
 import os
 import argparse
-# import cupy as cp
+# import cupy as cp         #this needs to be uncommented if processing data created using gpus
 
 def make_argparser():
     parser = argparse.ArgumentParser(description='Arguments to run analysis for FlappyBird reinforcement learning with human influence.')    
@@ -210,9 +210,9 @@ def main(path):
                     plt.title('{} Gradient Magnitude {} RMS'.format(layer,'Before' if processed=='raw' else 'After'))
                     plt.savefig(os.path.join(dir,'{}_gradient_{}.png'.format(layer,'Before' if processed=='raw' else 'After')))
         except OSError:
-            print('\n\n***{} gradient errno error:\n'.format(dir),flush=True)
+            print('\n***gradient files not found in {}\n'.format(dir),flush=True)
         except:
-            print('\n\n***{} gradient non-errno error:\n'.format(dir),flush=True)            
+            print('\n***error with gradient files for {}\n'.format(dir),flush=True)            
             
         try:
             with open(os.path.join(dir,'stats.csv'),newline='') as csvFile:
@@ -228,7 +228,7 @@ def main(path):
                         bestScore = score
             
         except:
-            print('\n***{} can\'t find stats file***'.format(str(dir)),flush=True)
+            print('\n***can\'t find stats file {}***\n'.format(str(dir)),flush=True)
 
         cumulative_scores = []
         running_rewards = []
@@ -249,7 +249,7 @@ def main(path):
                 r_sum = 0
                 
                 if running_rewards[-1] >= 4:
-                    print('\n***file:{} test {} length disagreement***'.format(dir,len(running_rewards)))
+                    print('\n***file:{} file length disagreement***'.format(dir))
                 if len(running_rewards)>=2 and running_rewards[-1]<running_rewards[-2]:
                     minimum = len(running_rewards)
                 if running_rewards[-1] > running_rewards[maximum]:
@@ -296,9 +296,9 @@ def main(path):
                 plot_cdf(maxDict,path=os.path.join(dir,'max_CDF'),x_text='Values',log_x=True,x_ticks=None,x_label='Values',y_label='Prob',title='Max Values',legend_loc='lower right')
                 needMaxActivation = False
                 if dummy:
-                    print('fixed the loading issue',flush=True)
+                    print('loaded max CDF for',dir,flush=True)
             except ImportError:
-                print('\n***activations for {} require CuPy***'.format(dir),flush=True)
+                print('\n***activations for {} require CuPy***\n'.format(dir),flush=True)
                 break
             except OSError:
                 if maxP%100!=0:
@@ -336,21 +336,23 @@ def main(path):
                 else:
                     pass
             except Exception as e:
-                print('\n***error bulding CDFs for {}***'.format(dir))
+                print('\n***error bulding CDFs for {}***\n'.format(dir))
                 print(e,'\n')
         if needMinActivation:
-            print('\n***file not found, no activation set for {}***'.format(dir))
+            print('\n***file not found, no activation set for {}***\n'.format(dir))
 
         try:
-            with open(os.path.join(dir,'activations/{}.p'.format(200)),'rb') as f:
+            with open(os.path.join(dir,'activations/{}.p'.format(1)),'rb') as f:
                 initAct = pickle.load(f)
             initDict = makeDict(initAct)            
             plot_cdf(initDict,path=os.path.join(dir,'init_CDF'),log_x=True,x_text='Values',x_ticks=None,x_label='Values',y_label='Prob',title='Initial Values',legend_loc='lower right')
         except ImportError:
             print('\n***activations for {} require CuPy***'.format(dir))
         except OSError:
-            print('\n***optimal activation file not found, using different activation set for {}***'.format(dir))
-            #subtract 100 from activation file
+            with open(os.path.join(dir,'activations/{}.p'.format(200)),'rb') as f:
+                initAct = pickle.load(f)
+            initDict = makeDict(initAct)            
+            plot_cdf(initDict,path=os.path.join(dir,'init_CDF'),log_x=True,x_text='Values',x_ticks=None,x_label='Values',y_label='Prob',title='Initial Values',legend_loc='lower right')
         except Exception as e:
             print('\n***error bulding CDFs for {}***'.format(dir))
             print(e,'\n')
@@ -378,7 +380,7 @@ def main(path):
 
 if __name__=='__main__':
     '''Leverages multi-processing in Hamming to be able to conduct graphical and numerical
-       analysis on an arbitrary number of  tests nearly simultaneously. This script will 
+       analysis on an arbitrary number of tests nearly simultaneously. This script will 
        first locate each individual test in the data directory tree, then create a process 
        to analyze the tests with a 1:1 process to test ratio.'''
     params = make_argparser()
