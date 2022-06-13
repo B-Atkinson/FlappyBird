@@ -11,7 +11,7 @@ do
         do
             for INIT in Xavier He
             do
-                for L2 in false
+                for L2 in true
                 do
                     for L2Constant in .1
                     do    

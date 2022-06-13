@@ -364,7 +364,7 @@ while episode <= hparams.num_episodes:
             gradArray = np.array(grad_buffer[k]).ravel()
 
             if hparams.L2:
-                gradArray += 2*hparams.L2Constant*model[k].ravel() #implement L2 Normalization on reward maximization
+                gradArray -= 2*hparams.L2Constant*model[k].ravel() #implement L2 Normalization on reward maximization
 
             magnitudes[k].append(np.sqrt(gradArray.dot(gradArray))) #capture magnitude of gradient array for both sets of weights before RMS
             g = grad_buffer[k]  # gradient
