@@ -2,7 +2,7 @@ import os
 import pathlib
 import numpy as np
 
-rootDir = pathlib.Path('/home/brian.atkinson/thesis/data/noGPU/hybrid')
+rootDir = pathlib.Path('/home/brian.atkinson/thesis/data/noGPU/noRMSprop')
 humanScores,baseScores = [],[]
 bestBaseScore,bestBaseDir,bestHumScore,bestHumDir  = 0, None,0, None
 worstBaseScore,worstBaseDir,worstHumScore,worstHumDir = 100, None,100, None
