@@ -26,9 +26,11 @@ submit a batch training job in Hamming looping through many different hyperparam
                     ...
                     done
                 done
+                
         c) update the '--export=ALL,... \' line to pass in each of the variables you created for-loops for in step 1b
            ex: 
                 --export=ALL,HUMAN=$HUMAN,SEED=$SEED \
+                
            on the left of the = sign is the variable being passed in to the job submission script, and the $VARIABLE is the value you wish passed in 
            that is set in the for-loop. Using the above example, $HUMAN is either false or true, and $SEED is 1 2 3 or 4. 
         d) update the  '--output=....txt \' line to reflect where you want the slurm output text file saved to
@@ -64,6 +66,7 @@ submit a batch training job in Hamming looping through many different hyperparam
                 --init=Xavier \
                 --leaky=false \
                 --output_dir=$OUTPUT
+                
     3) in the terminal, initiate training by entering '. multiSubmit.sh' which will run the shell script inside the current VM as opposed to creating a sub-shell to run it in
 If you wish to run a single test, I suggest simply using the above steps but with only one value in the for-loops, which saves work on your end.
 
