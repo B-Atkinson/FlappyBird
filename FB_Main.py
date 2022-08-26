@@ -144,8 +144,8 @@ def discount_rewards(r, gamma):
         running_add = running_add * gamma + r[t]
         discounted_r[t] = running_add
         
-    discounted_r -= np.mean(discounted_r)
-    discounted_r /= np.std(discounted_r)
+    # discounted_r -= np.mean(discounted_r)
+    # discounted_r /= np.std(discounted_r)
     return discounted_r
 
 # Determine which action to take

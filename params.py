@@ -54,7 +54,7 @@ def make_argparser():
                         help='if True, L2 normalization is used on gradients')
     parser.add_argument('--L2Constant', type=float, default=.00001)                    
     parser.add_argument('--pipe_reward', type=float, default=1.0)
-    parser.add_argument('--loss_reward', type=float, default=-5.0)
+    parser.add_argument('--loss_reward', type=float, default=-1.0)
     parser.add_argument('--flip_heuristic', type=str2bool, default=False,
                         help='if True, the actions recommended by the human heuristic are inverted where \
                                  y_agent>y_bottom_gap results in a NOOP recommendation')

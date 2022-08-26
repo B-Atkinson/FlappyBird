@@ -14,7 +14,7 @@ python FB_Main.py \
 --loss_reward=-5 \
 --save_stats=200 \
 --gamma=0.99 \
---learning_rate=0.0001 \
+--learning_rate=$LR \
 --decay_rate=.99 \
 --batch_size=200 \
 --human=$HUMAN \
