@@ -48,11 +48,11 @@ def make_argparser():
                         help="specify a number to seed the PRNGs with")
     parser.add_argument("--decay_rate", type=float, default=.99,
                         help="rate of decay for RMSprop")
-    parser.add_argument('--batch_size', type=int, default=10,
+    parser.add_argument('--batch_size', type=int, default=200,
                         help="number of episodes to conduct rmsprop parameter updates over")
     parser.add_argument('--L2', type=str2bool, default=False,
                         help='if True, L2 normalization is used on gradients')
-    parser.add_argument('--L2Constant', type=float, default=.00001)                    
+    parser.add_argument('--L2Constant', type=float, default=.001)                    
     parser.add_argument('--pipe_reward', type=float, default=1.0)
     parser.add_argument('--loss_reward', type=float, default=-1.0)
     parser.add_argument('--flip_heuristic', type=str2bool, default=False,
@@ -70,15 +70,15 @@ def make_argparser():
                         help="percentage of the previous frame to subtract from the current frame in the calculation of the hybrid.")
     parser.add_argument('--gap_size', type=float, default=1,
                         help="percent to increase or decrease standard gap size. training gap will be 100*gap_size")
-    parser.add_argument('--human', type=str2bool, default=True,
+    parser.add_argument('--human', type=str2bool, default=False,
                         help="determines if human influence is to be used in training the agent")
     parser.add_argument('--human_influence', type=float, default=.4,
                         help="determines if human influence is to be used in training the agent")
     parser.add_argument('--human_decay', type=float, default=0,
                         help="rate of exponential decay for human influence per episode")
-    parser.add_argument('--num_episodes', type=int, default=20,
+    parser.add_argument('--num_episodes', type=int, default=30000,
                         help="the number of episodes to train the agent on")
-    parser.add_argument('--save_stats', type=int, default=100,
+    parser.add_argument('--save_stats', type=int, default=200,
                         help="specifies the number of episodes to wait until saving network parameters, training summaries, and moves")
     parser.add_argument('--hidden_save_rate', type=int, default=200,
                         help='saves the hidden layer activations every X episodes')

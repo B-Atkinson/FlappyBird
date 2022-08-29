@@ -15,7 +15,7 @@ do
                 do
                     for L2Constant in .001
                     do
-                        for LR in 1e-4 1-e5
+                        for LR in .0001.00001
                         do
                         sbatch --job-name=$JOB\
                         --export=ALL,HUMAN=$HUMAN,SEED=$SEED,LEAKY=$LEAKY,OUTPUT=$OUTPUT,INIT=$INIT,L2=$L2,L2Constant=$L2Constant,LR=$LR \
